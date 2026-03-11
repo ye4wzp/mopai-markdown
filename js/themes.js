@@ -460,5 +460,5 @@ themes.forEach(theme => console.log(\`🎨 \${theme}\`));
 
 ---
 
-*由 Markdown 排版器 V2 生成 · 市面上最好看的排版工具*
+*由 Markdown 排版器 V2 生成 · 优雅高效的排版工具*
 `;
