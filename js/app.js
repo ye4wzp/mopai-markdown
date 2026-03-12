@@ -684,12 +684,13 @@ ${previewEl.innerHTML}
       const preview = document.getElementById('preview-content');
       if (!preview) return;
 
-      // 防抖 30ms，减少计算频率
-      clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => {
+      // 使用 rAF 节流替代 setTimeout，帧级同步更流畅
+      if (scrollTimer) return;
+      scrollTimer = requestAnimationFrame(() => {
+        scrollTimer = null;
         const targetTop = calcTargetScroll(editor, preview);
         smoothScrollTo(preview, targetTop);
-      }, 30);
+      });
     }
 
     // 计算目标滚动位置
@@ -759,14 +760,14 @@ ${previewEl.innerHTML}
         return;
       }
 
-      const duration = Math.min(200, Math.abs(distance) * 0.6 + 60); // 自适应时长
+      const duration = Math.min(180, Math.abs(distance) * 0.5 + 40); // 更短响应更快
       const startTime = performance.now();
 
       function tick(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        // easeOutCubic: 快速启动 → 平滑减速
-        const eased = 1 - Math.pow(1 - progress, 3);
+        // easeOutQuart: 更平滑的减速曲线
+        const eased = 1 - Math.pow(1 - progress, 4);
         el.scrollTop = startTop + distance * eased;
 
         if (progress < 1) {

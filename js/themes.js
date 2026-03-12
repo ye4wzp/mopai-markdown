@@ -389,9 +389,9 @@ const colorPresets = [
 ];
 
 // ─── 示例 Markdown 内容 ─────────────────
-const sampleMarkdown = `# Markdown 排版器 V2
+const sampleMarkdown = `# MoPai 墨排 V3
 
-欢迎使用本地 **Markdown 排版工具** V2！✨ 这是市面上最精美的公众号排版器。
+欢迎使用 **MoPai 墨排** V3！✒️ 优雅高效的多平台 Markdown 排版工具。
 
 ## 🎯 核心功能
 
@@ -460,5 +460,5 @@ themes.forEach(theme => console.log(\`🎨 \${theme}\`));
 
 ---
 
-*由 Markdown 排版器 V2 生成 · 优雅高效的排版工具*
+*由 MoPai 墨排 V3 生成 · 优雅高效的排版工具*
 `;
