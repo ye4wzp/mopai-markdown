@@ -285,6 +285,9 @@ const app = createApp({
         wrapperStyle = wrapperStyle.replace(/font-size:\s*\d+px;/, `font-size: ${fontSize.value}px;`);
       }
 
+      // 确保 wrapperStyle 中的双引号不会破坏 HTML 属性
+      wrapperStyle = wrapperStyle.replace(/"/g, "'");
+
       return `<div style="${wrapperStyle}">${wrapper.innerHTML}</div>`;
     }
 
