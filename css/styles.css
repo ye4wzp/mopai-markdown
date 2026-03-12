@@ -394,6 +394,20 @@ body {
   min-width: 0;
 }
 
+/* --- 预览区图片样式 --- */
+.preview-body img {
+  display: block;
+  margin: 16px auto;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.preview-body p img {
+  display: block;
+  margin: 16px auto;
+}
+
 .preview-header {
   display: flex;
   align-items: center;

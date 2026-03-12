@@ -444,16 +444,13 @@ const app = createApp({
     }
 
     function insertImageFromFile(file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target.result;
-        const textarea = document.querySelector('.editor-textarea');
-        const pos = textarea ? textarea.selectionStart : markdownText.value.length;
-        const imgMarkdown = `\n![${file.name}](${dataUrl})\n`;
-        markdownText.value = markdownText.value.slice(0, pos) + imgMarkdown + markdownText.value.slice(pos);
-        showToast('image');
-      };
-      reader.readAsDataURL(file);
+      const blobUrl = URL.createObjectURL(file);
+      const textarea = document.querySelector('.editor-textarea');
+      const pos = textarea ? textarea.selectionStart : markdownText.value.length;
+      const name = file.name || '图片';
+      const imgMarkdown = `\n![${name}](${blobUrl})\n`;
+      markdownText.value = markdownText.value.slice(0, pos) + imgMarkdown + markdownText.value.slice(pos);
+      showToast('image');
     }
 
     function handleDragOver(event) { event.preventDefault(); }
