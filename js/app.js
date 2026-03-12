@@ -366,8 +366,27 @@ const app = createApp({
     async function copyToClipboard(target) {
       const previewEl = document.getElementById('preview-content');
       if (!previewEl) return;
+
       try {
-        const html = previewEl.innerHTML;
+        // 将 preview 内容克隆，处理图片为 base64
+        const cloneEl = previewEl.cloneNode(true);
+        const imgs = cloneEl.querySelectorAll('img');
+
+        // 将 blob:/data: 图片转为内联 base64
+        const imgPromises = Array.from(imgs).map(async (img) => {
+          const src = img.getAttribute('src') || '';
+          if (src.startsWith('blob:') || src.startsWith('data:')) {
+            try {
+              const dataUrl = await imageToBase64(src);
+              img.setAttribute('src', dataUrl);
+            } catch (e) {
+              console.warn('图片转换失败:', e);
+            }
+          }
+        });
+        await Promise.all(imgPromises);
+
+        const html = cloneEl.innerHTML;
         const blob = new Blob([html], { type: 'text/html' });
         const plainBlob = new Blob([previewEl.innerText], { type: 'text/plain' });
         await navigator.clipboard.write([
@@ -375,6 +394,7 @@ const app = createApp({
         ]);
         showToast(target);
       } catch (err) {
+        // 回退方案：直接选中并复制
         const selection = window.getSelection();
         const range = document.createRange();
         range.selectNodeContents(previewEl);
@@ -384,6 +404,29 @@ const app = createApp({
         selection.removeAllRanges();
         showToast(target);
       }
+    }
+
+    // 将图片URL转为 base64 data URL（用于微信兼容）
+    function imageToBase64(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          try {
+            const dataUrl = canvas.toDataURL('image/png');
+            resolve(dataUrl);
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = reject;
+        img.src = src;
+      });
     }
 
     function showToast(target) {
