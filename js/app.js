@@ -27,6 +27,15 @@ const app = createApp({
     const useImageHost = ref(localStorage.getItem('md-converter-imagehost') !== 'false');
     const uploadingImage = ref(false);
 
+    // AI 检测状态
+    const showAiDetect = ref(false);
+    const aiDetectResult = ref({ total: 0, issues: [], score: 100 });
+    const deepseekKey = ref(localStorage.getItem('md-converter-deepseek-key') || '');
+
+    // 图床管理状态
+    const showImageManager = ref(false);
+    const imageHistory = ref(JSON.parse(localStorage.getItem('md-converter-image-history') || '[]'));
+
     // ─── Markdown-it 初始化 ──────────────
     const md = window.markdownit({
       html: true,
@@ -506,6 +515,8 @@ const app = createApp({
           const imgMarkdown = `\n![${name}](${url})\n`;
           markdownText.value = markdownText.value.slice(0, pos) + imgMarkdown + markdownText.value.slice(pos);
           uploadingImage.value = false;
+          // 记录上传历史
+          addImageHistory(name, url);
           showToast('image');
           return;
         } catch (err) {
@@ -912,6 +923,61 @@ ${previewEl.innerHTML}
       }
     }
 
+    // ─── 去 AI 味检测 ──────────────────
+    function runAiDetect() {
+      const result = aiDetector.detect(markdownText.value);
+      // 为每个 match 添加 Vue 响应式属性
+      result.issues.forEach(issue => {
+        issue.matches.forEach(m => {
+          m.rewriting = false;
+          m.rewriteResult = '';
+        });
+      });
+      aiDetectResult.value = result;
+      showAiDetect.value = true;
+    }
+
+    async function aiRewrite(match, issue) {
+      if (!deepseekKey.value) return;
+      match.rewriting = true;
+      try {
+        const result = await aiDetector.rewriteWithAI(match.matched, deepseekKey.value);
+        match.rewriteResult = result;
+      } catch (err) {
+        match.rewriteResult = '❌ ' + (err.message || '改写失败');
+      }
+      match.rewriting = false;
+    }
+
+    function setDeepseekKey(key) {
+      deepseekKey.value = key;
+      localStorage.setItem('md-converter-deepseek-key', key);
+    }
+
+    // ─── 图床管理 ──────────────────────
+    function addImageHistory(name, url) {
+      const now = new Date();
+      const time = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+      imageHistory.value.unshift({ name, url, time });
+      // 最多保留 50 条
+      if (imageHistory.value.length > 50) imageHistory.value = imageHistory.value.slice(0, 50);
+      localStorage.setItem('md-converter-image-history', JSON.stringify(imageHistory.value));
+    }
+
+    function toggleImageManager() {
+      showImageManager.value = !showImageManager.value;
+    }
+
+    async function copyImageUrl(img) {
+      await navigator.clipboard.writeText(img.url);
+      showToast('copy');
+    }
+
+    async function copyImageMd(img) {
+      await navigator.clipboard.writeText(`![${img.name}](${img.url})`);
+      showToast('copy');
+    }
+
     // ─── 初始化 ──────────────────────
     onMounted(() => {
       const savedTheme = localStorage.getItem('md-converter-theme');
@@ -972,6 +1038,12 @@ ${previewEl.innerHTML}
       insertFormat, saveToHistory, loadHistory, deleteHistory, toggleHistory,
       syncScroll, scrollToHeading, handleTab, handlePaste, handleDrop, handleDragOver,
       colorPresets,
+      // AI 检测
+      showAiDetect, aiDetectResult, deepseekKey,
+      runAiDetect, aiRewrite, setDeepseekKey,
+      // 图床管理
+      showImageManager, imageHistory,
+      toggleImageManager, copyImageUrl, copyImageMd,
     };
   }
 });
