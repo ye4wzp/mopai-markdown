@@ -45,6 +45,11 @@ const app = createApp({
     const wordGoal = ref(parseInt(localStorage.getItem('md-converter-word-goal') || '0'));
     const showLineNumbers = ref(localStorage.getItem('md-converter-linenumbers') !== 'false');
 
+    // Phase 3 状态
+    const showTemplates = ref(false);
+    const templates = templateLibrary || [];
+    const customCss = ref(localStorage.getItem('md-converter-custom-css') || '');
+
     // ─── Markdown-it 初始化 ──────────────
     const md = window.markdownit({
       html: true,
@@ -1064,6 +1069,34 @@ ${previewEl.innerHTML}
       return Array.from({ length: lines }, (_, i) => i + 1);
     });
 
+    // ─── Phase 3 功能 ──────────────────
+
+    // 模板
+    function applyTemplate(tpl) {
+      if (markdownText.value.trim() && markdownText.value !== sampleMarkdown) {
+        if (!confirm('当前编辑器有内容，使用模板将覆盖。确认继续？')) return;
+      }
+      markdownText.value = tpl.content;
+      showTemplates.value = false;
+    }
+
+    // 自定义 CSS
+    function setCustomCss(val) {
+      customCss.value = val;
+      localStorage.setItem('md-converter-custom-css', val);
+      applyCustomCss(val);
+    }
+
+    function applyCustomCss(css) {
+      let styleEl = document.getElementById('custom-user-css');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'custom-user-css';
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = css;
+    }
+
     // ─── 初始化 ──────────────────────
     onMounted(() => {
       const savedTheme = localStorage.getItem('md-converter-theme');
@@ -1100,6 +1133,9 @@ ${previewEl.innerHTML}
       if (window.mermaid) {
         window.mermaid.initialize({ startOnLoad: false, theme: 'default' });
       }
+
+      // 恢复自定义 CSS
+      if (customCss.value) applyCustomCss(customCss.value);
     });
 
     onUnmounted(() => {
@@ -1140,6 +1176,9 @@ ${previewEl.innerHTML}
       wordGoal, wordGoalProgress, setWordGoal,
       showLineNumbers, toggleLineNumbers, lineNumbers,
       findInEditor, replaceOne, replaceAll,
+      // Phase 3
+      showTemplates, templates, applyTemplate,
+      customCss, setCustomCss,
     };
   }
 });

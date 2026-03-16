@@ -21,6 +21,11 @@
   
   <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖋️</text></svg>">
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f6ef7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 
@@ -150,6 +155,7 @@
       <div class="editor-header">
         <span class="editor-title">Markdown 编辑</span>
         <div class="editor-actions">
+          <button class="editor-action-btn" @click="showTemplates = true" title="模板库">📋 模板</button>
           <label class="editor-action-btn" title="上传 .md 文件">
             <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
             上传
@@ -447,7 +453,22 @@
           <div class="shortcut-item">保存 <span class="shortcut-key">⌘S</span></div>
           <div class="shortcut-item">复制 <span class="shortcut-key">⌘⇧C</span></div>
           <div class="shortcut-item">缩进 <span class="shortcut-key">Tab</span></div>
+          <div class="shortcut-item">查找 <span class="shortcut-key">⌘F</span></div>
+          <div class="shortcut-item">专注 <span class="shortcut-key">⌘\</span></div>
         </div>
+      </div>
+
+      <!-- 自定义 CSS -->
+      <div class="settings-section">
+        <div class="settings-section-title">🎨 高级样式</div>
+        <div class="toggle-row-desc" style="margin-bottom:6px;">自定义 CSS 仅影响预览区，不影响编辑器</div>
+        <textarea
+          class="custom-css-editor"
+          :value="customCss"
+          @input="setCustomCss($event.target.value)"
+          placeholder="/* 输入自定义 CSS */&#10;.preview-body h1 { color: #e74c3c; }&#10;.preview-body blockquote { border-left: 3px solid gold; }"
+          spellcheck="false"
+        ></textarea>
       </div>
     </div>
   </div>
@@ -604,12 +625,41 @@
       </div>
     </div>
   </div>
+
+  <!-- 模板库弹窗 -->
+  <div class="modal-overlay" v-if="showTemplates" @click.self="showTemplates = false">
+    <div class="modal" style="width:560px;">
+      <div class="modal-header">
+        <h3>📋 模板库</h3>
+        <button class="close-btn" @click="showTemplates = false">✕</button>
+      </div>
+      <div style="padding:14px 18px; max-height:65vh; overflow-y:auto;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">选择模板开始写作，已有内容会提示确认</div>
+        <div v-for="t in templates" :key="t.key" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:var(--transition);" @click="applyTemplate(t)" @mouseenter="$event.currentTarget.style.background='var(--hover-bg)'" @mouseleave="$event.currentTarget.style.background=''">
+          <div style="font-size:20px;">{{ t.name.split(' ')[0] }}</div>
+          <div style="flex:1;">
+            <div style="font-weight:500;font-size:13px;">{{ t.name.slice(t.name.indexOf(' ') + 1) }}</div>
+            <div style="font-size:11px;color:var(--text-muted);">{{ t.desc }}</div>
+          </div>
+          <span style="font-size:11px;color:var(--primary);">使用 →</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- 主题 + AI检测 + 应用 -->
+<!-- 主题 + AI检测 + 模板 + 应用 -->
 <script src="js/themes.js"></script>
 <script src="js/ai-detector.js"></script>
+<script src="js/templates.js"></script>
 <script src="js/app.js"></script>
+
+<!-- PWA Service Worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
+</script>
 
 </body>
 </html>

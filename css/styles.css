@@ -1232,3 +1232,24 @@ body {
 .word-goal-fill.complete {
   background: var(--success);
 }
+
+/* --- 自定义 CSS 编辑器 --- */
+.custom-css-editor {
+  width: 100%;
+  min-height: 80px;
+  max-height: 200px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.custom-css-editor:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(79,110,247,0.15);
+}
