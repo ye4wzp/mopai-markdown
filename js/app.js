@@ -24,6 +24,8 @@ const app = createApp({
     const wechatFootnote = ref(true);
     const hoveredTheme = ref(null);
     const themePreviewTimer = ref(null);
+    const useImageHost = ref(localStorage.getItem('md-converter-imagehost') !== 'false');
+    const uploadingImage = ref(false);
 
     // ─── Markdown-it 初始化 ──────────────
     const md = window.markdownit({
@@ -489,14 +491,58 @@ const app = createApp({
       }
     }
 
-    function insertImageFromFile(file) {
-      const blobUrl = URL.createObjectURL(file);
+    async function insertImageFromFile(file) {
       const textarea = document.querySelector('.editor-textarea');
       const pos = textarea ? textarea.selectionStart : markdownText.value.length;
       const name = file.name || '图片';
+
+      // 如果开启图床，先上传到 SM.MS
+      if (useImageHost.value) {
+        uploadingImage.value = true;
+        copyTarget.value = 'uploading';
+        copySuccess.value = true;
+        try {
+          const url = await uploadToSmms(file);
+          const imgMarkdown = `\n![${name}](${url})\n`;
+          markdownText.value = markdownText.value.slice(0, pos) + imgMarkdown + markdownText.value.slice(pos);
+          uploadingImage.value = false;
+          showToast('image');
+          return;
+        } catch (err) {
+          console.warn('SM.MS 上传失败，使用本地链接:', err);
+          uploadingImage.value = false;
+        }
+      }
+
+      // 回退：使用 blob URL
+      const blobUrl = URL.createObjectURL(file);
       const imgMarkdown = `\n![${name}](${blobUrl})\n`;
       markdownText.value = markdownText.value.slice(0, pos) + imgMarkdown + markdownText.value.slice(pos);
       showToast('image');
+    }
+
+    // SM.MS 图床上传
+    async function uploadToSmms(file) {
+      const formData = new FormData();
+      formData.append('smfile', file);
+      const resp = await fetch('https://sm.ms/api/v2/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await resp.json();
+      if (data.success) {
+        return data.data.url;
+      } else if (data.code === 'image_repeated') {
+        // 图片已存在，返回已有链接
+        return data.images;
+      } else {
+        throw new Error(data.message || '上传失败');
+      }
+    }
+
+    function toggleImageHost() {
+      useImageHost.value = !useImageHost.value;
+      localStorage.setItem('md-converter-imagehost', useImageHost.value ? 'true' : 'false');
     }
 
     function handleDragOver(event) { event.preventDefault(); }
@@ -917,7 +963,7 @@ ${previewEl.innerHTML}
       themeList, showHistory, showSettings, showToc, historyList, copySuccess, copyTarget,
       darkMode, customColor, fontFamily, fontSize, macCodeBlock,
       mobilePreview, wechatFootnote, hoveredTheme, themePreviewHtml, tocList,
-      showImageGuide, toggleImageGuide,
+      showImageGuide, toggleImageGuide, useImageHost, uploadingImage, toggleImageHost,
       showPublish, publishStatus, platforms, togglePublish, publishTo,
       selectTheme, toggleDarkMode, toggleSettings, toggleToc, toggleMobilePreview, toggleFootnote,
       onThemeHover, onThemeLeave,

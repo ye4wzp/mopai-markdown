@@ -32,6 +32,7 @@
     <span v-else-if="copyTarget === 'save'">✅ 已保存</span>
     <span v-else-if="copyTarget === 'export'">✅ 已导出 HTML</span>
     <span v-else-if="copyTarget === 'image'">✅ 图片已插入</span>
+    <span v-else-if="copyTarget === 'uploading'">⏳ 正在上传到图床...</span>
     <span v-else>✅ 已复制</span>
   </div>
 
@@ -303,6 +304,13 @@
             <div class="toggle-row-desc">三色圆点窗口样式</div>
           </div>
           <button class="toggle-switch" :class="{ active: macCodeBlock }" @click="macCodeBlock = !macCodeBlock"></button>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">🖼️ SM.MS 图床</div>
+            <div class="toggle-row-desc">粘贴图片自动上传获取永久链接</div>
+          </div>
+          <button class="toggle-switch" :class="{ active: useImageHost }" @click="toggleImageHost"></button>
         </div>
       </div>
 
