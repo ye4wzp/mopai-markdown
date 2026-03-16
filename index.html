@@ -24,7 +24,7 @@
 </head>
 <body>
 
-<div id="app">
+<div id="app" :class="{ dark: darkMode, 'focus-mode': focusMode }">
   <!-- Toast -->
   <div class="toast" v-if="copySuccess">
     <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
@@ -81,6 +81,11 @@
       <button class="header-btn has-label" @click="toggleDarkMode" :title="darkMode ? '亮色模式' : '暗色模式'">
         <span>{{ darkMode ? '☀️' : '🌙' }}</span>
         <span class="btn-label">主题</span>
+      </button>
+      <!-- 专注模式 -->
+      <button class="header-btn has-label" :class="{ active: focusMode }" @click="focusMode = !focusMode" title="专注模式 ⌘\\">
+        <span>{{ focusMode ? '⬜' : '◻️' }}</span>
+        <span class="btn-label">专注</span>
       </button>
       <!-- 设置 -->
       <button class="header-btn has-label" :class="{ active: showSettings }" @click="toggleSettings" title="样式设置">
@@ -240,17 +245,38 @@
         <button class="format-btn" @click="insertFormat('mermaid')" title="Mermaid 流程图" style="font-size:13px;">🔀</button>
       </div>
 
-      <textarea
-        class="editor-textarea"
-        v-model="markdownText"
-        @scroll="syncScroll"
-        @keydown="handleTab"
-        @paste="handlePaste"
-        @drop="handleDrop"
-        @dragover="handleDragOver"
-        placeholder="在此输入 Markdown 内容...&#10;&#10;💡 可直接粘贴或拖拽图片&#10;⌨️ 快捷键: ⌘B 加粗 | ⌘I 斜体 | ⌘K 链接 | ⌘S 保存 | ⌘⇧C 复制到公众号"
-        spellcheck="false"
-      ></textarea>
+      <!-- 查找替换栏 -->
+      <div class="find-replace-bar" v-if="showFindReplace">
+        <div style="display:flex;gap:6px;align-items:center;flex:1;">
+          <input class="find-input" type="text" v-model="findText" @input="findInEditor" placeholder="查找..." style="flex:1;">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">{{ findCount }} 处</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex:1;">
+          <input type="text" v-model="replaceText" placeholder="替换为..." style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:12px;">
+          <button class="btn" style="font-size:11px;padding:3px 8px;" @click="replaceOne">替换</button>
+          <button class="btn" style="font-size:11px;padding:3px 8px;" @click="replaceAll">全部</button>
+          <button class="close-btn" @click="showFindReplace = false" style="width:20px;height:20px;font-size:10px;">✕</button>
+        </div>
+      </div>
+
+      <!-- 编辑器区域（带行号） -->
+      <div class="editor-textarea-wrapper">
+        <div class="line-numbers" v-if="showLineNumbers">
+          <div class="line-number" v-for="n in lineNumbers" :key="n">{{ n }}</div>
+        </div>
+        <textarea
+          class="editor-textarea"
+          :class="{ 'has-line-numbers': showLineNumbers }"
+          v-model="markdownText"
+          @scroll="syncScroll"
+          @keydown="handleTab"
+          @paste="handlePaste"
+          @drop="handleDrop"
+          @dragover="handleDragOver"
+          placeholder="在此输入 Markdown 内容...&#10;&#10;💡 可直接粘贴或拖拽图片&#10;⌨️ 快捷键: ⌘B 加粗 | ⌘I 斜体 | ⌘K 链接 | ⌘S 保存 | ⌘⇧C 复制到公众号"
+          spellcheck="false"
+        ></textarea>
+      </div>
 
       <div class="editor-footer">
         <div class="file-hint"><span>支持 .md 文件上传 | 可粘贴/拖拽图片</span></div>
@@ -258,7 +284,14 @@
           <span>{{ charCount }} 字符</span>
           <span>{{ wordCount }} 词</span>
           <span>📖 {{ readingTime }}</span>
+          <span v-if="wordGoal > 0" :style="{ color: wordGoalProgress >= 100 ? '#10b981' : 'var(--text-muted)' }">
+            🎯 {{ wordGoalProgress }}%
+          </span>
         </div>
+      </div>
+      <!-- 字数目标进度条 -->
+      <div v-if="wordGoal > 0" class="word-goal-bar">
+        <div class="word-goal-fill" :style="{ width: wordGoalProgress + '%' }" :class="{ complete: wordGoalProgress >= 100 }"></div>
       </div>
     </div>
 
@@ -322,6 +355,13 @@
           </div>
           <button class="toggle-switch" :class="{ active: useImageHost }" @click="toggleImageHost"></button>
         </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">🔢 编辑器行号</div>
+            <div class="toggle-row-desc">左侧显示行号</div>
+          </div>
+          <button class="toggle-switch" :class="{ active: showLineNumbers }" @click="toggleLineNumbers"></button>
+        </div>
       </div>
 
       <!-- AI 服务 -->
@@ -331,6 +371,18 @@
         <div style="display:flex;gap:8px;align-items:center;">
           <input type="password" :value="deepseekKey" @input="setDeepseekKey($event.target.value)" placeholder="DeepSeek API Key" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
           <a href="https://platform.deepseek.com/api_keys" target="_blank" style="font-size:11px;color:var(--primary);white-space:nowrap;">获取 Key</a>
+        </div>
+      </div>
+
+      <!-- 字数目标 -->
+      <div class="settings-section">
+        <div class="settings-section-title">🎯 字数目标</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" :value="wordGoal" @input="setWordGoal($event.target.value)" placeholder="目标字数" min="0" step="100" style="width:100px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
+          <span style="font-size:12px;color:var(--text-muted);">当前 {{ wordCount }} 字</span>
+          <span v-if="wordGoal > 0" style="font-size:12px;" :style="{ color: wordGoalProgress >= 100 ? '#10b981' : 'var(--text-muted)' }">
+            {{ wordGoalProgress >= 100 ? '🎉 已达标！' : wordGoalProgress + '%' }}
+          </span>
         </div>
       </div>
 

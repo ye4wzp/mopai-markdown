@@ -36,6 +36,15 @@ const app = createApp({
     const showImageManager = ref(false);
     const imageHistory = ref(JSON.parse(localStorage.getItem('md-converter-image-history') || '[]'));
 
+    // Phase 2 状态
+    const focusMode = ref(false);
+    const showFindReplace = ref(false);
+    const findText = ref('');
+    const replaceText = ref('');
+    const findCount = ref(0);
+    const wordGoal = ref(parseInt(localStorage.getItem('md-converter-word-goal') || '0'));
+    const showLineNumbers = ref(localStorage.getItem('md-converter-linenumbers') !== 'false');
+
     // ─── Markdown-it 初始化 ──────────────
     const md = window.markdownit({
       html: true,
@@ -668,6 +677,14 @@ ${previewEl.innerHTML}
     // ─── 快捷键 ──────────────────────
     function handleKeyboard(event) {
       const isMeta = event.metaKey || event.ctrlKey;
+
+      // ESC 退出专注模式或关闭查找
+      if (event.key === 'Escape') {
+        if (focusMode.value) { focusMode.value = false; return; }
+        if (showFindReplace.value) { showFindReplace.value = false; return; }
+        return;
+      }
+
       if (!isMeta) return;
 
       const keyMap = {
@@ -682,6 +699,24 @@ ${previewEl.innerHTML}
           copyToClipboard('wechat');
           return;
         }
+      }
+
+      // ⌘\ 专注模式
+      if (event.key === '\\') {
+        event.preventDefault();
+        focusMode.value = !focusMode.value;
+        return;
+      }
+
+      // ⌘F 查找
+      if (event.key === 'f') {
+        event.preventDefault();
+        showFindReplace.value = true;
+        nextTick(() => {
+          const input = document.querySelector('.find-input');
+          if (input) input.focus();
+        });
+        return;
       }
 
       if (event.key === 's') {
@@ -740,6 +775,10 @@ ${previewEl.innerHTML}
       const editor = event.target;
       const preview = document.getElementById('preview-content');
       if (!preview) return;
+
+      // 同步行号滚动
+      const lineNums = document.querySelector('.line-numbers');
+      if (lineNums) lineNums.scrollTop = editor.scrollTop;
 
       // 使用 rAF 节流替代 setTimeout，帧级同步更流畅
       if (scrollTimer) return;
@@ -978,6 +1017,53 @@ ${previewEl.innerHTML}
       showToast('copy');
     }
 
+    // ─── Phase 2 功能 ──────────────────
+
+    // 查找替换
+    function findInEditor() {
+      if (!findText.value) { findCount.value = 0; return; }
+      const regex = new RegExp(findText.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      const matches = markdownText.value.match(regex);
+      findCount.value = matches ? matches.length : 0;
+    }
+
+    function replaceOne() {
+      if (!findText.value) return;
+      const idx = markdownText.value.indexOf(findText.value);
+      if (idx === -1) return;
+      markdownText.value = markdownText.value.substring(0, idx) + replaceText.value + markdownText.value.substring(idx + findText.value.length);
+      findInEditor();
+    }
+
+    function replaceAll() {
+      if (!findText.value) return;
+      const regex = new RegExp(findText.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      markdownText.value = markdownText.value.replace(regex, replaceText.value);
+      findCount.value = 0;
+    }
+
+    // 字数目标
+    function setWordGoal(val) {
+      wordGoal.value = parseInt(val) || 0;
+      localStorage.setItem('md-converter-word-goal', wordGoal.value);
+    }
+
+    const wordGoalProgress = computed(() => {
+      if (!wordGoal.value || wordGoal.value <= 0) return 0;
+      return Math.min(100, Math.round((wordCount.value / wordGoal.value) * 100));
+    });
+
+    // 行号
+    function toggleLineNumbers() {
+      showLineNumbers.value = !showLineNumbers.value;
+      localStorage.setItem('md-converter-linenumbers', showLineNumbers.value ? 'true' : 'false');
+    }
+
+    const lineNumbers = computed(() => {
+      const lines = markdownText.value.split('\n').length;
+      return Array.from({ length: lines }, (_, i) => i + 1);
+    });
+
     // ─── 初始化 ──────────────────────
     onMounted(() => {
       const savedTheme = localStorage.getItem('md-converter-theme');
@@ -1024,6 +1110,11 @@ ${previewEl.innerHTML}
       localStorage.setItem('md-converter-draft', val);
     });
 
+    // Vue 3 不处理 mount 元素上的 :class 绑定，需手动同步
+    watch(focusMode, (val) => {
+      document.getElementById('app').classList.toggle('focus-mode', val);
+    });
+
     return {
       markdownText, currentTheme, renderedHtml, charCount, wordCount, readingTime,
       themeList, showHistory, showSettings, showToc, historyList, copySuccess, copyTarget,
@@ -1044,6 +1135,11 @@ ${previewEl.innerHTML}
       // 图床管理
       showImageManager, imageHistory,
       toggleImageManager, copyImageUrl, copyImageMd,
+      // Phase 2
+      focusMode, showFindReplace, findText, replaceText, findCount,
+      wordGoal, wordGoalProgress, setWordGoal,
+      showLineNumbers, toggleLineNumbers, lineNumbers,
+      findInEditor, replaceOne, replaceAll,
     };
   }
 });
