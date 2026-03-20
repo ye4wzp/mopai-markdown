@@ -49,6 +49,7 @@ const app = createApp({
     const showTemplates = ref(false);
     const templates = templateLibrary || [];
     const customCss = ref(localStorage.getItem('md-converter-custom-css') || '');
+    const showExportMenu = ref(false);
 
     // ─── Markdown-it 初始化 ──────────────
     const md = window.markdownit({
@@ -594,6 +595,69 @@ ${previewEl.innerHTML}
       a.download = 'markdown-export.html';
       a.click();
       URL.revokeObjectURL(url);
+      showToast('export');
+    }
+
+    // ─── 导出 PDF ────────────────────
+    function exportPdf() {
+      const previewEl = document.getElementById('preview-content');
+      if (!previewEl) return;
+      const printWin = window.open('', '_blank');
+      const themeKey = currentTheme.value;
+      const themeStyles = themes[themeKey] ? Object.entries(themes[themeKey]).map(([k,v]) => `${k}:${v}`).join(';') : '';
+      printWin.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>MoPai 导出</title>
+<style>
+  body { max-width: 680px; margin: 0 auto; padding: 40px 30px; font-family: -apple-system, sans-serif; line-height: 1.8; color: #333; ${themeStyles} }
+  img { max-width: 100%; }
+  pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
+  code { font-family: Consolas, monospace; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 8px; }
+  @media print { body { margin: 0; padding: 20px; } }
+</style>
+</head><body>${previewEl.innerHTML}</body></html>`);
+      printWin.document.close();
+      setTimeout(() => { printWin.print(); }, 500);
+    }
+
+    // ─── 导出长图 ────────────────────
+    async function exportImage() {
+      const previewEl = document.getElementById('preview-content');
+      if (!previewEl || !window.html2canvas) { alert('html2canvas 未加载'); return; }
+      showToast('uploading'); // 显示“处理中”
+      try {
+        const canvas = await html2canvas(previewEl, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
+        const link = document.createElement('a');
+        link.download = 'mopai-export.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('export');
+      } catch (e) {
+        alert('导出失败: ' + e.message);
+      }
+    }
+
+    // ─── 导出 Word ────────────────────
+    function exportDocx() {
+      const previewEl = document.getElementById('preview-content');
+      if (!previewEl || !window.htmlDocx) { alert('html-docx-js 未加载'); return; }
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="font-family: -apple-system, sans-serif; line-height: 1.8; color: #333;">
+${previewEl.innerHTML}
+</body></html>`;
+      const blob = window.htmlDocx.asBlob(html);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'mopai-export.docx';
+      link.click();
+      URL.revokeObjectURL(link.href);
       showToast('export');
     }
 
@@ -1162,6 +1226,7 @@ ${previewEl.innerHTML}
       onThemeHover, onThemeLeave,
       setCustomColor, setFontFamily, setFontSize,
       copyToClipboard, handleFileUpload, clearEditor, exportHtml,
+      exportPdf, exportImage, exportDocx, showExportMenu,
       insertFormat, saveToHistory, loadHistory, deleteHistory, toggleHistory,
       syncScroll, scrollToHeading, handleTab, handlePaste, handleDrop, handleDragOver,
       colorPresets,

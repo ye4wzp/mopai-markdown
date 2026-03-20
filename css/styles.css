@@ -1253,3 +1253,37 @@ body {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(79,110,247,0.15);
 }
+
+/* --- 导出下拉菜单 --- */
+.export-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+.export-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 100;
+  min-width: 160px;
+  overflow: hidden;
+}
+.export-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.export-dropdown button:hover {
+  background: var(--hover-bg, rgba(0,0,0,0.05));
+}
