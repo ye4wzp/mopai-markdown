@@ -1136,17 +1136,156 @@ body {
 .file-input-hidden { display: none; }
 
 /* --- 响应式 --- */
+/* --- 手机端 Tab 切换栏 --- */
+.mobile-tab-bar {
+  display: none; /* 桌面端隐藏 */
+}
+
 @media (max-width: 768px) {
-  .main-content { flex-direction: column; }
-  .editor-panel { border-right: none; border-bottom: 1px solid var(--border); flex: none; height: 45vh; }
-  .preview-panel { flex: 1; }
-  .header { padding: 0 12px; }
-  .theme-bar { padding: 6px 12px; }
-  .modal { width: 90vw; }
-  .settings-panel { width: 100%; }
-  .toc-panel { width: 100%; }
-  .format-toolbar { padding: 3px 8px; }
+  /* 手机端 Tab 切换栏 */
+  .mobile-tab-bar {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+  }
+  .mobile-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: rgba(79,110,247,0.05);
+  }
+
+  /* 主体布局：全屏切换 */
+  .main-content {
+    flex-direction: column;
+  }
+  .editor-panel {
+    display: none;
+    border-right: none;
+    flex: 1;
+    height: auto;
+  }
+  .preview-panel {
+    display: none;
+    flex: 1;
+  }
+  .editor-panel.mobile-active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .preview-panel.mobile-active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* Header：只显示图标，隐藏文字 */
+  .header {
+    padding: 0 8px;
+    min-height: 40px;
+  }
+  .btn-label {
+    display: none;
+  }
+  .header-btn {
+    padding: 6px;
+    min-width: 36px;
+  }
+  .logo-text { font-size: 14px; }
+  .logo-version { font-size: 9px; padding: 1px 4px; }
+
+  /* 主题栏：可横向滚动 */
+  .theme-bar {
+    padding: 6px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .theme-bar::-webkit-scrollbar { display: none; }
+  .theme-chip {
+    font-size: 11px;
+    padding: 3px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .theme-label { display: none; }
   .theme-preview-tooltip { display: none; }
+
+  /* 格式工具栏：可滚动 */
+  .format-toolbar {
+    padding: 3px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+  .format-toolbar::-webkit-scrollbar { display: none; }
+  .format-btn {
+    flex-shrink: 0;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  /* 编辑器头部 */
+  .editor-header { padding: 4px 8px; }
+  .editor-title { font-size: 12px; }
+  .editor-action-btn { font-size: 11px; padding: 3px 6px; }
+
+  /* 预览头部 */
+  .preview-header { padding: 4px 8px; }
+  .preview-title { font-size: 12px; }
+
+  /* 设置面板：全屏覆盖 */
+  .settings-panel {
+    width: 100%;
+    max-height: 85vh;
+  }
+
+  /* 目录面板：全屏覆盖 */
+  .toc-panel {
+    width: 100%;
+  }
+
+  /* 弹窗适配 */
+  .modal {
+    width: 95vw !important;
+    max-height: 80vh;
+  }
+
+  /* 导出下拉 */
+  .export-dropdown {
+    right: -60px;
+  }
+
+  /* 编辑器底栏 */
+  .editor-footer {
+    font-size: 10px;
+    padding: 2px 8px;
+    gap: 8px;
+  }
+
+  /* 查找替换栏 */
+  .find-replace-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .find-input {
+    flex: 1;
+    min-width: 80px;
+  }
 }
 
 /* =====================================================

@@ -152,10 +152,16 @@
     </div>
   </div>
 
+  <!-- 手机端 Tab 切换栏（仅小屏显示） -->
+  <div class="mobile-tab-bar">
+    <button class="mobile-tab" :class="{ active: mobileTab === 'editor' }" @click="mobileTab = 'editor'">✏️ 编辑</button>
+    <button class="mobile-tab" :class="{ active: mobileTab === 'preview' }" @click="mobileTab = 'preview'">👁️ 预览</button>
+  </div>
+
   <!-- ─── 主体 ─── -->
   <div class="main-content">
     <!-- 左：编辑器 -->
-    <div class="editor-panel">
+    <div class="editor-panel" :class="{ 'mobile-active': mobileTab === 'editor' }">
       <div class="editor-header">
         <span class="editor-title">Markdown 编辑</span>
         <div class="editor-actions">
@@ -306,7 +312,7 @@
     </div>
 
     <!-- 右：预览 -->
-    <div class="preview-panel">
+    <div class="preview-panel" :class="{ 'mobile-active': mobileTab === 'preview' }">
       <div class="preview-header">
         <span class="preview-title">
           预览

@@ -50,6 +50,7 @@ const app = createApp({
     const templates = templateLibrary || [];
     const customCss = ref(localStorage.getItem('md-converter-custom-css') || '');
     const showExportMenu = ref(false);
+    const mobileTab = ref('editor');
 
     // ─── Markdown-it 初始化 ──────────────
     const md = window.markdownit({
@@ -1227,6 +1228,7 @@ ${previewEl.innerHTML}
       setCustomColor, setFontFamily, setFontSize,
       copyToClipboard, handleFileUpload, clearEditor, exportHtml,
       exportPdf, exportImage, exportDocx, showExportMenu,
+      mobileTab,
       insertFormat, saveToHistory, loadHistory, deleteHistory, toggleHistory,
       syncScroll, scrollToHeading, handleTab, handlePaste, handleDrop, handleDragOver,
       colorPresets,
