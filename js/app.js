@@ -541,11 +541,15 @@ const app = createApp({
         }
       }
 
-      // 回退：使用 blob URL
-      const blobUrl = URL.createObjectURL(file);
-      const imgMarkdown = `\n![${name}](${blobUrl})\n`;
-      markdownText.value = markdownText.value.slice(0, pos) + imgMarkdown + markdownText.value.slice(pos);
-      showToast('image');
+      // 回退：使用 Base64 内嵌（确保图片可跨平台使用）
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64Url = e.target.result;
+        const imgMarkdown = `\n![${name}](${base64Url})\n`;
+        markdownText.value = markdownText.value.slice(0, pos) + imgMarkdown + markdownText.value.slice(pos);
+        showToast('image');
+      };
+      reader.readAsDataURL(file);
     }
 
     // SM.MS 图床上传
