@@ -52,6 +52,26 @@ const app = createApp({
     const showExportMenu = ref(false);
     const mobileTab = ref('editor');
 
+    // ─── 图片存储（Base64 隐藏）──────────
+    const IMAGE_STORE_KEY = 'md-converter-image-store';
+    const imageStore = (() => {
+      try {
+        const saved = localStorage.getItem(IMAGE_STORE_KEY);
+        return saved ? new Map(JSON.parse(saved)) : new Map();
+      } catch { return new Map(); }
+    })();
+    function saveImageStore() {
+      try { localStorage.setItem(IMAGE_STORE_KEY, JSON.stringify([...imageStore])); } catch {}
+    }
+    function genImageId() {
+      return 'img_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    }
+    function expandImagePlaceholders(text) {
+      return text.replace(/img:([a-z0-9_]+)/g, (match, id) => {
+        return imageStore.has(id) ? imageStore.get(id) : match;
+      });
+    }
+
     // ─── Markdown-it 初始化 ──────────────
     const md = window.markdownit({
       html: true,
@@ -169,7 +189,7 @@ const app = createApp({
     const renderedHtml = computed(() => {
       const theme = themes[currentTheme.value];
       if (!theme) return '';
-      const raw = md.render(markdownText.value);
+      const raw = md.render(expandImagePlaceholders(markdownText.value));
       let styled = applyThemeStyles(raw, theme.styles);
 
       // 微信脚注转换
@@ -541,11 +561,14 @@ const app = createApp({
         }
       }
 
-      // 回退：使用 Base64 内嵌（确保图片可跨平台使用）
+      // 回退：使用 Base64 + 占位符（编辑器里隐藏长字符串）
       const reader = new FileReader();
       reader.onload = (e) => {
         const base64Url = e.target.result;
-        const imgMarkdown = `\n![${name}](${base64Url})\n`;
+        const imgId = genImageId();
+        imageStore.set(imgId, base64Url);
+        saveImageStore();
+        const imgMarkdown = `\n![${name}](img:${imgId})\n`;
         markdownText.value = markdownText.value.slice(0, pos) + imgMarkdown + markdownText.value.slice(pos);
         showToast('image');
       };
