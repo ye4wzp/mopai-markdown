@@ -174,13 +174,7 @@ const app = createApp({
         index++;
       });
 
-      if (footnotes.length > 0) {
-        const footnotesHtml = `<div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280; line-height: 1.8;">
-          <div style="font-weight: 600; margin-bottom: 8px; color: #9ca3af; font-size: 12px; letter-spacing: 1px;">📎 参考链接</div>
-          ${footnotes.map(f => `<div style="margin: 2px 0; word-break: break-all;"><span style="color: #9ca3af;">[${f.index}]</span> <span>${f.text}</span>: <span style="color: #9ca3af;">${f.href}</span></div>`).join('')}
-        </div>`;
-        wrapper.innerHTML += footnotesHtml;
-      }
+
 
       return wrapper.innerHTML;
     }
@@ -654,13 +648,24 @@ ${previewEl.innerHTML}
     async function exportImage() {
       const previewEl = document.getElementById('preview-content');
       if (!previewEl || !window.html2canvas) { alert('html2canvas 未加载'); return; }
-      showToast('uploading'); // 显示“处理中”
+      showToast('uploading');
+      // 保存原始样式，临时展开全部内容
+      const parent = previewEl.parentElement;
+      const origOverflow = parent ? parent.style.overflow : '';
+      const origHeight = parent ? parent.style.height : '';
+      if (parent) {
+        parent.style.overflow = 'visible';
+        parent.style.height = 'auto';
+      }
       try {
         const canvas = await html2canvas(previewEl, {
           scale: 2,
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
+          scrollY: 0,
+          height: previewEl.scrollHeight,
+          windowHeight: previewEl.scrollHeight,
         });
         const link = document.createElement('a');
         link.download = 'mopai-export.png';
@@ -669,6 +674,12 @@ ${previewEl.innerHTML}
         showToast('export');
       } catch (e) {
         alert('导出失败: ' + e.message);
+      } finally {
+        // 恢复原始样式
+        if (parent) {
+          parent.style.overflow = origOverflow;
+          parent.style.height = origHeight;
+        }
       }
     }
 
