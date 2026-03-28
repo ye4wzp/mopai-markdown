@@ -52,6 +52,35 @@ const app = createApp({
     const showExportMenu = ref(false);
     const mobileTab = ref('editor');
 
+    // ─── 撤回/重做 ────────────────────
+    const UNDO_MAX = 50;
+    const undoStack = [];
+    const redoStack = [];
+    let isUndoRedo = false; // 防止 watch 触发时又压栈
+    function pushUndo(text) {
+      if (undoStack.length >= UNDO_MAX) undoStack.shift();
+      undoStack.push(text);
+      redoStack.length = 0; // 新编辑清空 redo
+    }
+    function undo() {
+      if (undoStack.length === 0) return;
+      isUndoRedo = true;
+      redoStack.push(markdownText.value);
+      markdownText.value = undoStack.pop();
+      nextTick(() => { isUndoRedo = false; });
+    }
+    function redo() {
+      if (redoStack.length === 0) return;
+      isUndoRedo = true;
+      undoStack.push(markdownText.value);
+      markdownText.value = redoStack.pop();
+      nextTick(() => { isUndoRedo = false; });
+    }
+
+    // ─── 渲染防抖 ────────────────────
+    let renderTimer = null;
+    const RENDER_DEBOUNCE = 300; // ms
+
     // ─── 图片存储（Base64 隐藏）──────────
     const IMAGE_STORE_KEY = 'md-converter-image-store';
     const imageStore = (() => {
@@ -180,9 +209,10 @@ const app = createApp({
     }
 
     // ─── 渲染 HTML ──────────────────────
-    const renderedHtml = computed(() => {
+    const renderedHtml = ref('');
+    function doRender() {
       const theme = themes[currentTheme.value];
-      if (!theme) return '';
+      if (!theme) { renderedHtml.value = ''; return; }
       const raw = md.render(expandImagePlaceholders(markdownText.value));
       let styled = applyThemeStyles(raw, theme.styles);
 
@@ -197,8 +227,10 @@ const app = createApp({
         }
       }
 
-      return styled;
-    });
+      renderedHtml.value = styled;
+    }
+    // 初始渲染
+    doRender();
 
     // ─── TOC 大纲 ──────────────────────
     const tocList = computed(() => {
@@ -595,6 +627,13 @@ const app = createApp({
 
     function handleDragOver(event) { event.preventDefault(); }
 
+    // ─── 导出文件名自动命名 ────────────
+    function getExportFilename(ext) {
+      const match = markdownText.value.match(/^#\s+(.+)/m);
+      const title = match ? match[1].replace(/[*`~#\/\\:?"<>|]/g, '').trim() : 'mopai-export';
+      return title + '.' + ext;
+    }
+
     // ─── 导出 HTML ──────────────────────
     function exportHtml() {
       const previewEl = document.getElementById('preview-content');
@@ -614,7 +653,7 @@ ${previewEl.innerHTML}
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'markdown-export.html';
+      a.download = getExportFilename('html');
       a.click();
       URL.revokeObjectURL(url);
       showToast('export');
@@ -668,7 +707,7 @@ ${previewEl.innerHTML}
           windowHeight: previewEl.scrollHeight,
         });
         const link = document.createElement('a');
-        link.download = 'mopai-export.png';
+        link.download = getExportFilename('png');
         link.href = canvas.toDataURL('image/png');
         link.click();
         showToast('export');
@@ -694,7 +733,7 @@ ${previewEl.innerHTML}
       const blob = window.htmlDocx.asBlob(html);
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = 'mopai-export.docx';
+      link.download = getExportFilename('docx');
       link.click();
       URL.revokeObjectURL(link.href);
       showToast('export');
@@ -807,6 +846,19 @@ ${previewEl.innerHTML}
           copyToClipboard('wechat');
           return;
         }
+        // ⌘⇧Z 重做
+        if (event.key === 'Z' || event.key === 'z') {
+          event.preventDefault();
+          redo();
+          return;
+        }
+      }
+
+      // ⌘Z 撤回
+      if (event.key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+        return;
       }
 
       // ⌘\ 专注模式
@@ -1245,9 +1297,20 @@ ${previewEl.innerHTML}
       document.removeEventListener('keydown', handleKeyboard);
     });
 
-    watch(markdownText, (val) => {
+    watch(markdownText, (val, oldVal) => {
       localStorage.setItem('md-converter-draft', val);
+      // 撤回栈
+      if (!isUndoRedo && oldVal !== undefined) {
+        pushUndo(oldVal);
+      }
+      // 防抖渲染
+      if (renderTimer) clearTimeout(renderTimer);
+      renderTimer = setTimeout(doRender, RENDER_DEBOUNCE);
     });
+
+    // 主题或脚注变化时立即重新渲染
+    watch(currentTheme, doRender);
+    watch(wechatFootnote, doRender);
 
     // Vue 3 不处理 mount 元素上的 :class 绑定，需手动同步
     watch(focusMode, (val) => {
