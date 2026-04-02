@@ -446,6 +446,22 @@ const app = createApp({
       try {
         // 将 preview 内容克隆，处理图片为 base64
         const cloneEl = previewEl.cloneNode(true);
+
+        // 内联 highlight.js 代码块的颜色样式（微信不支持 CSS class）
+        cloneEl.querySelectorAll('pre code span').forEach(span => {
+          const orig = document.querySelector(`pre code span.${[...span.classList].join('.')}`);
+          if (orig) {
+            const computed = window.getComputedStyle(orig);
+            const color = computed.color;
+            const fontWeight = computed.fontWeight;
+            const fontStyle = computed.fontStyle;
+            let inlineStyle = `color: ${color};`;
+            if (fontWeight && fontWeight !== '400' && fontWeight !== 'normal') inlineStyle += ` font-weight: ${fontWeight};`;
+            if (fontStyle && fontStyle !== 'normal') inlineStyle += ` font-style: ${fontStyle};`;
+            span.setAttribute('style', (span.getAttribute('style') || '') + inlineStyle);
+          }
+        });
+
         const imgs = cloneEl.querySelectorAll('img');
 
         // 将 blob:/data: 图片转为内联 base64
