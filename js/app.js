@@ -755,6 +755,27 @@ ${previewEl.innerHTML}
       showToast('export');
     }
 
+    // ─── 分发到多平台（WechatSync）─────
+    function syncToMultiPlatform() {
+      if (typeof window.syncPost !== 'function') {
+        alert('请先安装「文章同步助手」Chrome 扩展：\nhttps://chrome.google.com/webstore/detail/hchobocdmclopcbnibdnoafilagadion\n\n安装后刷新本页面即可使用。');
+        return;
+      }
+      const previewEl = document.getElementById('preview-content');
+      if (!previewEl) return;
+      const titleMatch = markdownText.value.match(/^#\s+(.+)/m);
+      const title = titleMatch ? titleMatch[1].replace(/[*`~#]/g, '').trim() : 'MoPai 文章';
+      // 尝试提取首张图做封面
+      const firstImg = previewEl.querySelector('img');
+      const thumb = firstImg ? firstImg.src : '';
+      window.syncPost({
+        title: title,
+        content: previewEl.innerHTML,
+        desc: title,
+        thumb: thumb,
+      });
+    }
+
     // ─── 格式化工具栏 ──────────────────
     function insertFormat(type) {
       const textarea = document.querySelector('.editor-textarea');
@@ -1344,7 +1365,7 @@ ${previewEl.innerHTML}
       onThemeHover, onThemeLeave,
       setCustomColor, setFontFamily, setFontSize,
       copyToClipboard, handleFileUpload, clearEditor, exportHtml,
-      exportPdf, exportImage, exportDocx, showExportMenu,
+      exportPdf, exportImage, exportDocx, syncToMultiPlatform, showExportMenu,
       mobileTab,
       insertFormat, saveToHistory, loadHistory, deleteHistory, toggleHistory,
       syncScroll, scrollToHeading, handleTab, handlePaste, handleDrop, handleDragOver,

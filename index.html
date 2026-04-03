@@ -19,6 +19,9 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <!-- html-docx-js (Word 导出) -->
   <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.4.8/dist/html-docx.min.js"></script>
+  <!-- WechatSync 多平台分发 SDK -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wechatsync/article-syncjs@latest/dist/styles.css">
+  <script src="https://cdn.jsdelivr.net/gh/wechatsync/article-syncjs@latest/dist/main.js"></script>
   
   <!-- 样式 -->
   <link rel="stylesheet" href="css/styles.css">
@@ -337,6 +340,8 @@
               <button @click="exportPdf(); showExportMenu = false;">📑 导出 PDF</button>
               <button @click="exportImage(); showExportMenu = false;">🖼️ 导出长图</button>
               <button @click="exportDocx(); showExportMenu = false;">📝 导出 Word</button>
+              <hr style="margin: 4px 0; border: none; border-top: 1px solid var(--border);">
+              <button @click="syncToMultiPlatform(); showExportMenu = false;">🚀 分发到多平台</button>
             </div>
           </div>
           <button class="btn btn-primary" @click="copyToClipboard('wechat')" title="复制到公众号 ⌘⇧C">
