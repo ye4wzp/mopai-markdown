@@ -18,7 +18,7 @@ const app = createApp({
     const customColor = ref('#4f6ef7');
     const fontFamily = ref('sans');
     const fontSize = ref(16);
-    const macCodeBlock = ref(true);
+    const macCodeBlock = ref(localStorage.getItem('md-converter-maccode') !== 'false');
     const mobilePreview = ref(false);
     const showImageGuide = ref(false);
     const wechatFootnote = ref(true);
@@ -423,9 +423,10 @@ const app = createApp({
       customColor.value = color;
       document.documentElement.style.setProperty('--primary', color);
       localStorage.setItem('md-converter-color', color);
+      doRender();
     }
-    function setFontFamily(ff) { fontFamily.value = ff; localStorage.setItem('md-converter-font', ff); }
-    function setFontSize(size) { fontSize.value = size; localStorage.setItem('md-converter-fontsize', String(size)); }
+    function setFontFamily(ff) { fontFamily.value = ff; localStorage.setItem('md-converter-font', ff); doRender(); }
+    function setFontSize(size) { fontSize.value = size; localStorage.setItem('md-converter-fontsize', String(size)); doRender(); }
 
     // ─── 手机预览模式 ──────────────────
     function toggleMobilePreview() {
@@ -1321,6 +1322,13 @@ ${previewEl.innerHTML}
       // 全局快捷键
       document.addEventListener('keydown', handleKeyboard);
 
+      // 点击外部关闭导出菜单
+      document.addEventListener('click', (e) => {
+        if (showExportMenu.value && !e.target.closest('.export-dropdown-wrapper')) {
+          showExportMenu.value = false;
+        }
+      });
+
       // Mermaid 初始化
       if (window.mermaid) {
         window.mermaid.initialize({ startOnLoad: false, theme: 'default' });
@@ -1345,9 +1353,13 @@ ${previewEl.innerHTML}
       renderTimer = setTimeout(doRender, RENDER_DEBOUNCE);
     });
 
-    // 主题或脚注变化时立即重新渲染
+    // 设置变化时立即重新渲染
     watch(currentTheme, doRender);
     watch(wechatFootnote, doRender);
+    watch(macCodeBlock, (val) => {
+      localStorage.setItem('md-converter-maccode', val ? 'true' : 'false');
+      doRender();
+    });
 
     // Vue 3 不处理 mount 元素上的 :class 绑定，需手动同步
     watch(focusMode, (val) => {
