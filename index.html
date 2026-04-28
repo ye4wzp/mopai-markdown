@@ -350,12 +350,13 @@
           </button>
         </div>
       </div>
-      <div
+      <article
         class="preview-body"
         :class="{ 'mobile-preview': mobilePreview }"
         id="preview-content"
+        itemprop="articleBody"
         v-html="renderedHtml"
-      ></div>
+      ></article>
     </div>
 
     <!-- 设置面板 -->
@@ -507,6 +508,11 @@
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
           💡 点击平台卡片 → 自动复制优化格式的内容 → 打开平台编辑器 → 直接粘贴发布
         </div>
+
+        <!-- 状态栏 -->
+        <div v-if="publishStatus" class="publish-status">
+          {{ publishStatus }}
+        </div>
         
         <!-- 平台卡片网格 -->
         <div class="publish-grid">
@@ -525,11 +531,6 @@
               <span class="publish-format-tag" :class="p.format">{{ p.format === 'html' ? '富文本' : p.format === 'markdown' ? 'MD' : '摘要' }}</span>
             </div>
           </div>
-        </div>
-        
-        <!-- 状态栏 -->
-        <div v-if="publishStatus" class="publish-status">
-          {{ publishStatus }}
         </div>
       </div>
     </div>
@@ -675,7 +676,8 @@
 <script src="js/themes.js"></script>
 <script src="js/ai-detector.js"></script>
 <script src="js/templates.js"></script>
-<script src="js/app.js"></script>
+<script src="js/publish-utils.js?v=20260427b"></script>
+<script src="js/app.js?v=20260427b"></script>
 
 <!-- PWA Service Worker -->
 <script>

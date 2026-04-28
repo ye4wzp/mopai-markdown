@@ -440,51 +440,39 @@ const app = createApp({
     }
 
     // ─── 复制功能 ──────────────────────
+    async function preparePublishHtml(simple = false) {
+      const previewEl = document.getElementById('preview-content');
+      if (!previewEl) return '';
+
+      if (window.MoPaiPublishUtils?.prepareHtml) {
+        return window.MoPaiPublishUtils.prepareHtml(previewEl, {
+          imageToBase64,
+          simple,
+        });
+      }
+
+      return previewEl.innerHTML;
+    }
+
+    async function copyPublishHtmlToClipboard(simple = true) {
+      const previewEl = document.getElementById('preview-content');
+      if (!previewEl) return '';
+
+      const html = await preparePublishHtml(simple);
+      const blob = new Blob([html], { type: 'text/html' });
+      const plainBlob = new Blob([previewEl.innerText], { type: 'text/plain' });
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'text/html': blob, 'text/plain': plainBlob })
+      ]);
+      return html;
+    }
+
     async function copyToClipboard(target) {
       const previewEl = document.getElementById('preview-content');
       if (!previewEl) return;
 
       try {
-        // 将 preview 内容克隆，处理图片为 base64
-        const cloneEl = previewEl.cloneNode(true);
-
-        // 内联 highlight.js 代码块的颜色样式（微信不支持 CSS class）
-        cloneEl.querySelectorAll('pre code span').forEach(span => {
-          const orig = document.querySelector(`pre code span.${[...span.classList].join('.')}`);
-          if (orig) {
-            const computed = window.getComputedStyle(orig);
-            const color = computed.color;
-            const fontWeight = computed.fontWeight;
-            const fontStyle = computed.fontStyle;
-            let inlineStyle = `color: ${color};`;
-            if (fontWeight && fontWeight !== '400' && fontWeight !== 'normal') inlineStyle += ` font-weight: ${fontWeight};`;
-            if (fontStyle && fontStyle !== 'normal') inlineStyle += ` font-style: ${fontStyle};`;
-            span.setAttribute('style', (span.getAttribute('style') || '') + inlineStyle);
-          }
-        });
-
-        const imgs = cloneEl.querySelectorAll('img');
-
-        // 将 blob:/data: 图片转为内联 base64
-        const imgPromises = Array.from(imgs).map(async (img) => {
-          const src = img.getAttribute('src') || '';
-          if (src.startsWith('blob:') || src.startsWith('data:')) {
-            try {
-              const dataUrl = await imageToBase64(src);
-              img.setAttribute('src', dataUrl);
-            } catch (e) {
-              console.warn('图片转换失败:', e);
-            }
-          }
-        });
-        await Promise.all(imgPromises);
-
-        const html = cloneEl.innerHTML;
-        const blob = new Blob([html], { type: 'text/html' });
-        const plainBlob = new Blob([previewEl.innerText], { type: 'text/plain' });
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'text/html': blob, 'text/plain': plainBlob })
-        ]);
+        await copyPublishHtmlToClipboard(false);
         showToast(target);
       } catch (err) {
         // 回退方案：直接选中并复制
@@ -757,24 +745,161 @@ ${previewEl.innerHTML}
     }
 
     // ─── 分发到多平台（WechatSync）─────
-    function syncToMultiPlatform() {
-      if (typeof window.syncPost !== 'function') {
-        alert('请先安装「文章同步助手」Chrome 扩展：\nhttps://chrome.google.com/webstore/detail/hchobocdmclopcbnibdnoafilagadion\n\n安装后刷新本页面即可使用。');
-        return;
-      }
-      const previewEl = document.getElementById('preview-content');
-      if (!previewEl) return;
+    function getPublishTitle() {
       const titleMatch = markdownText.value.match(/^#\s+(.+)/m);
-      const title = titleMatch ? titleMatch[1].replace(/[*`~#]/g, '').trim() : 'MoPai 文章';
-      // 尝试提取首张图做封面
+      return titleMatch ? titleMatch[1].replace(/[*`~#]/g, '').trim() : 'MoPai 文章';
+    }
+
+    async function buildPublishPost() {
+      const previewEl = document.getElementById('preview-content');
+      if (!previewEl) return null;
+
       const firstImg = previewEl.querySelector('img');
       const thumb = firstImg ? firstImg.src : '';
-      window.syncPost({
+      const title = getPublishTitle();
+      return {
         title: title,
-        content: previewEl.innerHTML,
+        content: await preparePublishHtml(true),
         desc: title,
         thumb: thumb,
+      };
+    }
+
+    function hasWechatSyncBridge() {
+      return Boolean(
+        window.$syncer &&
+        typeof window.$syncer.getAccounts === 'function' &&
+        typeof window.$syncer.addTask === 'function'
+      );
+    }
+
+    function waitForWechatSyncBridge(timeoutMs = 1200) {
+      if (hasWechatSyncBridge()) return Promise.resolve(true);
+
+      return new Promise(resolve => {
+        const started = Date.now();
+        const timer = setInterval(() => {
+          if (hasWechatSyncBridge()) {
+            clearInterval(timer);
+            resolve(true);
+            return;
+          }
+
+          if (Date.now() - started >= timeoutMs) {
+            clearInterval(timer);
+            resolve(false);
+          }
+        }, 100);
       });
+    }
+
+    async function handleWechatSyncUnavailable() {
+      try {
+        await copyPublishHtmlToClipboard(true);
+        showToast('wechat');
+      } catch (err) {
+        console.warn('同步助手不可用时复制失败:', err);
+      }
+
+      const message = '未检测到文章同步助手扩展注入。已先复制富文本；请确认用安装了扩展的 Google Chrome 打开本页，并在扩展详情里允许访问 localhost，然后刷新页面。';
+      if (showPublish.value) {
+        publishStatus.value = message;
+      } else {
+        alert(message);
+      }
+      return false;
+    }
+
+    async function syncToMultiPlatform() {
+      const bridgeReady = await waitForWechatSyncBridge();
+      if (!bridgeReady || typeof window.syncPost !== 'function') {
+        return handleWechatSyncUnavailable();
+      }
+
+      const post = await buildPublishPost();
+      if (!post) return false;
+      window.syncPost(post);
+      return true;
+    }
+
+    function getWechatSyncAccounts() {
+      return new Promise(resolve => {
+        if (!hasWechatSyncBridge()) {
+          resolve([]);
+          return;
+        }
+
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            resolve([]);
+          }
+        }, 8000);
+
+        window.$syncer.getAccounts((resp, maybeAccounts) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          const accounts = Array.isArray(maybeAccounts) ? maybeAccounts : resp;
+          resolve(Array.isArray(accounts) ? accounts : []);
+        });
+      });
+    }
+
+    function updateWechatDirectSyncStatus(status, targetAccounts) {
+      const accounts = Array.isArray(status?.accounts) ? status.accounts : [];
+      const targetTypes = new Set(targetAccounts.map(account => account.type));
+      const targetStatuses = accounts.filter(account => targetTypes.has(account.type));
+      if (!targetStatuses.length) return;
+
+      const failed = targetStatuses.find(account => account.status === 'failed');
+      if (failed) {
+        publishStatus.value = `微信公众号同步失败：${failed.error || failed.msg || '请稍后重试'}`;
+        return;
+      }
+
+      const done = targetStatuses.find(account => account.status === 'done');
+      if (done) {
+        const draftLink = done.editResp?.draftLink;
+        publishStatus.value = draftLink ? '微信公众号草稿已创建，正在打开草稿...' : '微信公众号草稿已创建，请在同步助手里查看草稿';
+        if (draftLink) window.open(draftLink, '_blank');
+        return;
+      }
+
+      const uploading = targetStatuses.find(account => account.status === 'uploading') || targetStatuses[0];
+      publishStatus.value = `正在同步微信公众号：${uploading.msg || '准备创建草稿...'}`;
+    }
+
+    async function publishToWechat() {
+      publishStatus.value = '正在检测文章同步助手扩展...';
+      const bridgeReady = await waitForWechatSyncBridge();
+      if (!bridgeReady) {
+        return handleWechatSyncUnavailable();
+      }
+
+      const accounts = await getWechatSyncAccounts();
+      const wechatAccounts = accounts.filter(account => account.type === 'weixin');
+      if (!wechatAccounts.length) {
+        publishStatus.value = '已检测到扩展，但没有可用的微信公众号账号。请先在 Chrome 登录 mp.weixin.qq.com，或在同步助手里确认公众号授权后刷新本页。';
+        return false;
+      }
+
+      const post = await buildPublishPost();
+      if (!post) return false;
+
+      publishStatus.value = `正在提交到 ${wechatAccounts.length} 个微信公众号账号...`;
+      try {
+        window.$syncer.addTask(
+          { post, accounts: wechatAccounts },
+          status => updateWechatDirectSyncStatus(status, wechatAccounts),
+          () => {}
+        );
+        return true;
+      } catch (err) {
+        publishStatus.value = `微信公众号同步失败：${err.message || '扩展调用异常'}`;
+        return false;
+      }
     }
 
     // ─── 格式化工具栏 ──────────────────
@@ -1080,7 +1205,7 @@ ${previewEl.innerHTML}
     const publishStatus = ref('');
 
     const platforms = [
-      { key: 'wechat', name: '微信公众号', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M9.5 4C6.46 4 4 6.01 4 8.5c0 1.37.73 2.6 1.88 3.43l-.5 1.5 1.73-.96A7.08 7.08 0 009.5 13C12.54 13 15 11 15 8.5S12.54 4 9.5 4zm-2.13 2.63a.88.88 0 110 1.75.88.88 0 010-1.75zm4.26 0a.88.88 0 110 1.75.88.88 0 010-1.75zM15.5 9c-.01 0 .01 0 0 0 .17.58.25 1.17.25 1.75 0 2.93-2.78 5.25-6.25 5.25l-.43-.01C10.35 17.8 12.5 19 15 19c.65 0 1.28-.1 1.87-.28l1.44.8-.42-1.25C19.08 17.37 20 15.97 20 14.5 20 11.46 18.04 9 15.5 9z"/></svg>', color: '#07c160', url: 'https://mp.weixin.qq.com/', format: 'html', desc: '复制富文本 → 粘贴到编辑器' },
+      { key: 'wechat', name: '微信公众号', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M9.5 4C6.46 4 4 6.01 4 8.5c0 1.37.73 2.6 1.88 3.43l-.5 1.5 1.73-.96A7.08 7.08 0 009.5 13C12.54 13 15 11 15 8.5S12.54 4 9.5 4zm-2.13 2.63a.88.88 0 110 1.75.88.88 0 010-1.75zm4.26 0a.88.88 0 110 1.75.88.88 0 010-1.75zM15.5 9c-.01 0 .01 0 0 0 .17.58.25 1.17.25 1.75 0 2.93-2.78 5.25-6.25 5.25l-.43-.01C10.35 17.8 12.5 19 15 19c.65 0 1.28-.1 1.87-.28l1.44.8-.42-1.25C19.08 17.37 20 15.97 20 14.5 20 11.46 18.04 9 15.5 9z"/></svg>', color: '#07c160', url: '', format: 'html', desc: '用同步助手创建草稿' },
       { key: 'zhihu', name: '知乎', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M5.721 0C5.04 0 4.487.554 4.487 1.236v21.528c0 .682.554 1.236 1.235 1.236h12.544c.682 0 1.236-.554 1.236-1.236V1.236C19.502.554 18.948 0 18.266 0zm.387 2.673h6.77v3.66H9.08l2.558 7.7-1.39.46-3.12-9.44h1.51V4.04H7.49v3.26l.8 2.44-1.39.46L5.75 6.89V2.673zm7.09 0h2.69v1.367h-2.69zm.068 2.27h2.554v1.11L14.2 12.4h1.7l-2.13 6.46h-1.56l1.85-5.61h-1.32l-1.41 4.28h-1.46l2.1-6.35h-1.7l1.79-5.26V4.943z"/></svg>', color: '#0066ff', url: 'https://zhuanlan.zhihu.com/write', format: 'markdown', desc: '复制 Markdown → 粘贴到专栏' },
       { key: 'weibo', name: '微博', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M10.3 18.3c-3.63.4-6.77-1.28-7.01-3.75-.24-2.47 2.52-4.82 6.15-5.22 3.63-.4 6.77 1.28 7.01 3.75.24 2.47-2.52 4.82-6.15 5.22zM20.76 8.94c-.26-.82-1.14-1.23-1.96-.97-.82.26-1.27 1.12-1.01 1.95.57 1.82-.06 3.16-1.38 3.94l-.16.09c2.57-1.47 3.7-3.7 3.1-5.54l-.02-.05c-.03-.1-.19-.56-.57-1.42a3.87 3.87 0 012.37-1.75c.84-.22 1.34-1.08 1.12-1.92a1.55 1.55 0 00-1.89-1.13 6.9 6.9 0 00-4.06 3.07A6.6 6.6 0 0014 3.8c-.47-.73-1.44-.94-2.17-.47-.73.47-.94 1.44-.47 2.17.47.73 1 1.88.79 3.18C8.64 7.25 3.47 9.22 3.47 13.28c0 4.13 5.25 6.4 10.04 6.4 6.3 0 10.49-3.67 10.49-6.58 0-1.78-1.07-2.8-1.79-3.35z"/><ellipse cx="10.07" cy="14.72" rx="2" ry="1.4"/></svg>', color: '#e6162d', url: 'https://weibo.com/', format: 'excerpt', desc: '复制摘要 → 粘贴发布' },
       { key: 'csdn', name: 'CSDN', icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.2 14.5c-2.65 0-4.8-2.02-4.8-4.5s2.15-4.5 4.8-4.5c1.29 0 2.46.49 3.33 1.29l-1.35 1.31a2.85 2.85 0 00-1.98-.78c-1.6 0-2.89 1.2-2.89 2.68s1.3 2.68 2.89 2.68c1.27 0 2.17-.72 2.5-1.72h-2.5V11.3h4.37c.06.3.09.6.09.92 0 2.47-1.65 4.28-3.96 4.28z"/></svg>', color: '#fc5531', url: 'https://editor.csdn.net/md', format: 'markdown', desc: '复制 Markdown → 粘贴到编辑器' },
@@ -1106,6 +1231,11 @@ ${previewEl.innerHTML}
       const previewEl = document.getElementById('preview-content');
       if (!previewEl) return;
 
+      if (platform.key === 'wechat') {
+        await publishToWechat();
+        return;
+      }
+
       publishStatus.value = `正在复制 ${platform.name} 格式...`;
 
       try {
@@ -1113,12 +1243,7 @@ ${previewEl.innerHTML}
 
         if (platform.format === 'html') {
           // 富文本格式：复制 HTML
-          const html = previewEl.innerHTML;
-          const blob = new Blob([html], { type: 'text/html' });
-          const plainBlob = new Blob([previewEl.innerText], { type: 'text/plain' });
-          await navigator.clipboard.write([
-            new ClipboardItem({ 'text/html': blob, 'text/plain': plainBlob })
-          ]);
+          await copyPublishHtmlToClipboard(true);
         } else if (platform.format === 'markdown') {
           // Markdown 格式：复制原始 MD
           await navigator.clipboard.writeText(markdownText.value);

@@ -2,7 +2,7 @@
 // MoPai 墨排 — Service Worker (PWA 离线支持)
 // ============================================
 
-const CACHE_NAME = 'mopai-v4';
+const CACHE_NAME = 'mopai-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const STATIC_ASSETS = [
   './js/themes.js',
   './js/ai-detector.js',
   './js/templates.js',
+  './js/publish-utils.js',
   './js/app.js',
 ];
 
