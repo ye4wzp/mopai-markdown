@@ -172,6 +172,15 @@ const app = createApp({
     }
     md.use(infoCardPlugin);
 
+    // ─── Mermaid 代码块 → 占位符（避开高亮/代码块样式，渲染见 renderMermaidDiagrams）──
+    const defaultFence = md.renderer.rules.fence.bind(md.renderer.rules);
+    md.renderer.rules.fence = (tokens, idx, options, env, slf) => {
+      if (tokens[idx].info.trim().toLowerCase() === 'mermaid') {
+        return `<div class="mermaid-placeholder">${md.utils.escapeHtml(tokens[idx].content)}</div>`;
+      }
+      return defaultFence(tokens, idx, options, env, slf);
+    };
+
     // ─── 微信链接转脚注 ──────────────────
     function convertLinksToFootnotes(html) {
       if (!wechatFootnote.value) return html;
@@ -203,7 +212,22 @@ const app = createApp({
         index++;
       });
 
-
+      // 正文末尾追加脚注列表（微信不支持正文外链，转为纯文本引用）
+      if (footnotes.length) {
+        const section = document.createElement('section');
+        section.setAttribute('style', 'margin-top: 28px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.08); font-size: 13px; line-height: 1.8; color: #999;');
+        const title = document.createElement('p');
+        title.setAttribute('style', 'margin: 0 0 8px; font-weight: 600; color: #666;');
+        title.textContent = '参考资料';
+        section.appendChild(title);
+        footnotes.forEach(({ index, text, href }) => {
+          const p = document.createElement('p');
+          p.setAttribute('style', 'margin: 0 0 4px; word-break: break-all;');
+          p.textContent = text && text !== href ? `[${index}] ${text}: ${href}` : `[${index}] ${href}`;
+          section.appendChild(p);
+        });
+        wrapper.appendChild(section);
+      }
 
       return wrapper.innerHTML;
     }
@@ -228,7 +252,27 @@ const app = createApp({
       }
 
       renderedHtml.value = styled;
+      // 预览 DOM 更新后再渲染 Mermaid（render 异步，须作用于真实 DOM）
+      nextTick(renderMermaidDiagrams);
     }
+
+    // ─── Mermaid 渲染（作用于已挂载的预览 DOM）──────────
+    function renderMermaidDiagrams() {
+      if (!window.mermaid) return;
+      const preview = document.getElementById('preview-content');
+      if (!preview) return;
+      preview.querySelectorAll('.mermaid-placeholder').forEach(async (el) => {
+        const code = el.textContent.trim();
+        if (!code) return;
+        try {
+          const id = 'mermaid-' + Math.random().toString(36).slice(2, 9);
+          const { svg } = await window.mermaid.render(id, code);
+          el.innerHTML = svg;
+          el.classList.remove('mermaid-placeholder');
+        } catch (_) {}
+      });
+    }
+
     // 初始渲染
     doRender();
 
@@ -335,19 +379,6 @@ const app = createApp({
         if (langLabel) langLabel.setAttribute('style', `margin-left: auto; font-size: 12px; color: ${textColor}; opacity: 0.5; font-family: -apple-system, sans-serif;`);
         const pre = el.querySelector('pre');
         if (pre) pre.setAttribute('style', `background: ${bgColor}; color: ${textColor}; padding: 16px; margin: 0; font-size: 13px; line-height: 1.7; overflow-x: auto; font-family: "SFMono-Regular", Consolas, monospace;`);
-      });
-
-      // Mermaid blocks
-      wrapper.querySelectorAll('.mermaid-placeholder').forEach(el => {
-        if (window.mermaid) {
-          try {
-            const id = 'mermaid-' + Math.random().toString(36).substr(2, 9);
-            window.mermaid.render(id, el.textContent).then(({ svg }) => {
-              el.innerHTML = svg;
-              el.classList.remove('mermaid-placeholder');
-            }).catch(() => {});
-          } catch (_) {}
-        }
       });
 
       let wrapperStyle = styles.wrapper || '';
