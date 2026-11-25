@@ -21,7 +21,8 @@ const app = createApp({
     const copySuccess = ref(false);
     const copyTarget = ref('');
     const darkMode = ref(false);
-    const customColor = ref('#4f6ef7');
+    const customColor = ref('');
+    const activeColor = computed(() => customColor.value || themes[currentTheme.value]?.accent || '#4f6ef7');
     const fontFamily = ref('sans');
     const fontSize = ref(16);
     const macCodeBlock = ref(localStorage.getItem('md-converter-maccode') !== 'false');
@@ -40,6 +41,7 @@ const app = createApp({
         provider: aiClient.PROVIDERS[c.provider] ? c.provider : 'deepseek',
         keys: (c.keys && typeof c.keys === 'object') ? c.keys : {},
         models: (c.models && typeof c.models === 'object') ? c.models : {},
+        baseUrl: typeof c.baseUrl === 'string' ? c.baseUrl : '',
       };
       // 迁移旧版单一 DeepSeek Key（也覆盖导入旧备份的情况）
       const legacy = localStorage.getItem('md-converter-deepseek-key');
@@ -50,7 +52,8 @@ const app = createApp({
     const aiProviderInfo = computed(() => aiClient.PROVIDERS[aiConfig.value.provider]);
     const aiKey = computed(() => aiConfig.value.keys[aiConfig.value.provider] || '');
     const aiModel = computed(() => aiConfig.value.models[aiConfig.value.provider] || '');
-    const aiReady = computed(() => !!aiKey.value);
+    const aiBaseUrl = computed(() => aiConfig.value.baseUrl || '');
+    const aiReady = computed(() => aiProviderInfo.value?.customBase ? Boolean(aiBaseUrl.value.trim()) : Boolean(aiKey.value));
 
     // AI 助手面板
     const showAiPanel = ref(false);
@@ -181,40 +184,56 @@ const app = createApp({
       }
     });
 
-    // ─── 信息卡片插件 ──────────────────
+    // ─── 信息卡片插件（支持单段与多段落 :::info|warning|tip|danger ... :::）───
     function infoCardPlugin(md) {
-      md.core.ruler.after('block', 'info_card', function(state) {
-        const tokens = state.tokens;
-        let i = 0;
-        while (i < tokens.length) {
-          if (tokens[i].type === 'paragraph_open') {
-            const nextToken = tokens[i + 1];
-            if (nextToken && nextToken.type === 'inline' && nextToken.content) {
-              const content = nextToken.content;
-              const match = content.match(/^:::(info|warning|tip|danger)\s*(.*?)(?:\n|$)([\s\S]*?):::$/);
-              if (match) {
-                const type = match[1];
-                const title = match[2].trim();
-                const body = match[3].trim();
-                const cardToken = new state.Token('html_block', '', 0);
-                const colorMap = {
-                  info: { bg: '#eef6ff', border: '#3b82f6', icon: 'ℹ️', color: '#1e40af' },
-                  warning: { bg: '#fff8e6', border: '#f59e0b', icon: '⚠️', color: '#92400e' },
-                  tip: { bg: '#ecfdf5', border: '#10b981', icon: '💡', color: '#065f46' },
-                  danger: { bg: '#fef2f2', border: '#ef4444', icon: '🚫', color: '#991b1b' },
-                };
-                const c = colorMap[type] || colorMap.info;
-                cardToken.content = `<div style="border-left: 4px solid ${c.border}; background: ${c.bg}; padding: 14px 18px; margin: 14px 0; border-radius: 0 8px 8px 0;">
-                  <div style="font-weight: 600; color: ${c.color}; margin-bottom: 6px; font-size: 15px;">${title || (c.icon + ' ' + type.toUpperCase())}</div>
-                  <div style="color: ${c.color}; opacity: 0.85; font-size: 14px; line-height: 1.7;">${md.renderInline(body)}</div>
-                </div>`;
-                tokens.splice(i, 3, cardToken);
-                continue;
-              }
-            }
+      const colorMap = {
+        info: { bg: '#eef6ff', border: '#3b82f6', icon: 'ℹ️', color: '#1e40af' },
+        warning: { bg: '#fff8e6', border: '#f59e0b', icon: '⚠️', color: '#92400e' },
+        tip: { bg: '#ecfdf5', border: '#10b981', icon: '💡', color: '#065f46' },
+        danger: { bg: '#fef2f2', border: '#ef4444', icon: '🚫', color: '#991b1b' },
+      };
+
+      md.block.ruler.before('fence', 'info_card', function (state, startLine, endLine, silent) {
+        const startPos = state.bMarks[startLine] + state.tShift[startLine];
+        const startMax = state.eMarks[startLine];
+        const firstLine = state.src.slice(startPos, startMax).trim();
+        const openMatch = firstLine.match(/^:::(info|warning|tip|danger)(?:\s+(.*))?$/);
+        if (!openMatch) return false;
+
+        let nextLine = startLine + 1;
+        let closed = false;
+        while (nextLine < endLine) {
+          const pos = state.bMarks[nextLine] + state.tShift[nextLine];
+          const max = state.eMarks[nextLine];
+          if (state.src.slice(pos, max).trim() === ':::') {
+            closed = true;
+            break;
           }
-          i++;
+          nextLine++;
         }
+        if (!closed) return false;
+        if (silent) return true;
+
+        const type = openMatch[1];
+        const rawTitle = (openMatch[2] || '').trim();
+        const c = colorMap[type] || colorMap.info;
+        const bodyLines = [];
+        for (let line = startLine + 1; line < nextLine; line++) {
+          const pos = state.bMarks[line];
+          const max = state.eMarks[line];
+          bodyLines.push(state.src.slice(pos, max));
+        }
+        const bodyHtml = md.render(bodyLines.join('\n').trim());
+        const titleHtml = rawTitle ? md.renderInline(rawTitle) : `${c.icon} ${type.toUpperCase()}`;
+
+        const cardToken = state.push('html_block', '', 0);
+        cardToken.map = [startLine, nextLine + 1];
+        cardToken.content = `<div data-info-card="true" style="border-left: 4px solid ${c.border}; background: ${c.bg}; padding: 14px 18px; margin: 14px 0; border-radius: 0 8px 8px 0;">
+          <div style="font-weight: 600; color: ${c.color}; margin-bottom: 6px; font-size: 15px;">${titleHtml}</div>
+          <div style="color: ${c.color}; opacity: 0.9; font-size: 14px; line-height: 1.7;">${bodyHtml}</div>
+        </div>\n`;
+        state.line = nextLine + 1;
+        return true;
       });
     }
     md.use(infoCardPlugin);
@@ -229,7 +248,7 @@ const app = createApp({
     };
 
     // ─── 微信链接转脚注（直接操作传入的 DOM 节点，省去额外解析） ──────────────────
-    function convertLinksToFootnotesEl(root) {
+    function convertLinksToFootnotesEl(root, themeObj) {
       if (!wechatFootnote.value) return;
 
       const links = root.querySelectorAll('a[href]');
@@ -259,10 +278,14 @@ const app = createApp({
 
       // 正文末尾追加脚注列表（微信不支持正文外链，转为纯文本引用）
       if (footnotes.length) {
+        const isDarkTheme = Boolean(themeObj && themeObj.isDark);
+        const borderColor = isDarkTheme ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)';
+        const titleColor = isDarkTheme ? '#e0e0e0' : '#666';
+        const textColor = isDarkTheme ? '#a9b1d6' : '#999';
         const section = document.createElement('section');
-        section.setAttribute('style', 'margin-top: 28px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.08); font-size: 13px; line-height: 1.8; color: #999;');
+        section.setAttribute('style', `margin-top: 28px; padding-top: 14px; border-top: 1px solid ${borderColor}; font-size: 13px; line-height: 1.8; color: ${textColor};`);
         const title = document.createElement('p');
-        title.setAttribute('style', 'margin: 0 0 8px; font-weight: 600; color: #666;');
+        title.setAttribute('style', `margin: 0 0 8px; font-weight: 600; color: ${titleColor};`);
         title.textContent = '参考资料';
         section.appendChild(title);
         footnotes.forEach(({ index, text, href }) => {
@@ -282,7 +305,7 @@ const app = createApp({
       if (!theme) { renderedHtml.value = ''; return; }
       const raw = md.render(expandImagePlaceholders(markdownText.value));
       // applyThemeStyles 内部已完成微信脚注转换，仅一趟 DOM 解析
-      const styled = applyThemeStyles(raw, theme.styles);
+      const styled = applyThemeStyles(raw, theme.styles, currentTheme.value);
       // DOMPurify 消毒：拦截 onerror/onload/<script>/javascript: 等注入向量（CDN 加载失败时降级为原样）
       renderedHtml.value = window.DOMPurify
         ? window.DOMPurify.sanitize(styled, { ADD_ATTR: ['style', 'target'] })
@@ -304,6 +327,7 @@ const app = createApp({
           const { svg } = await window.mermaid.render(id, code);
           el.innerHTML = svg;
           el.classList.remove('mermaid-placeholder');
+          el.classList.add('mermaid-diagram');
         } catch (_) {}
       });
     }
@@ -311,23 +335,35 @@ const app = createApp({
     // 初始渲染
     doRender();
 
-    // ─── TOC 大纲 ──────────────────────
-    const tocList = computed(() => {
-      const text = markdownText.value;
+    // ─── 标题解析（跳过围栏代码块，避免把 # 注释误判为标题）───
+    function extractMarkdownHeadings(text) {
       const headings = [];
-      const lines = text.split('\n');
+      const lines = (text || '').split('\n');
+      let fence = null;
       lines.forEach((line, idx) => {
+        const trimmed = line.trim();
+        const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
+        if (fenceMatch) {
+          const marker = fenceMatch[1];
+          if (!fence) fence = { ch: marker[0], len: marker.length };
+          else if (marker[0] === fence.ch && marker.length >= fence.len && trimmed === marker) fence = null;
+          return;
+        }
+        if (fence) return;
         const match = line.match(/^(#{1,3})\s+(.+)/);
         if (match) {
           headings.push({
             level: match[1].length,
-            text: match[2].replace(/[*`~]/g, ''),
+            text: match[2].replace(/[*`~]/g, '').trim(),
             line: idx,
           });
         }
       });
       return headings;
-    });
+    }
+
+    // ─── TOC 大纲 ──────────────────────
+    const tocList = computed(() => extractMarkdownHeadings(markdownText.value));
 
     function scrollToHeading(lineNum) {
       const textarea = document.querySelector('.editor-textarea');
@@ -345,9 +381,10 @@ const app = createApp({
     }
 
     // ─── 应用主题样式 ────────────────────
-    function applyThemeStyles(html, styles) {
-      const primary = customColor.value || '#4f6ef7';
-      const primaryBg = primary + '12';
+    function applyThemeStyles(html, styles, themeKey = currentTheme.value) {
+      const themeObj = themes[themeKey] || {};
+      const primary = customColor.value || themeObj.accent || '#4f6ef7';
+      const primaryBg = primary + '14';
       const fontMap = {
         sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Noto Sans SC", sans-serif',
         serif: '"Georgia", "Noto Serif SC", "Source Han Serif SC", serif',
@@ -373,6 +410,11 @@ const app = createApp({
           .replace(/\{\{PRIMARY\}\}/g, primary)
           .replace(/\{\{PRIMARY_BG\}\}/g, primaryBg);
         wrapper.querySelectorAll(tag).forEach(el => {
+          // 信息卡片内的段落保留卡片自有语义色，避免被主题正文样式覆盖
+          if (tag === 'p' && el.closest('[data-info-card]')) {
+            el.setAttribute('style', 'margin: 6px 0; line-height: 1.7;');
+            return;
+          }
           el.setAttribute('style', (el.getAttribute('style') || '') + resolved);
         });
       }
@@ -417,7 +459,7 @@ const app = createApp({
       });
 
       // 脚注转换（作用于同一个 wrapper，避免再次解析序列化）
-      convertLinksToFootnotesEl(wrapper);
+      convertLinksToFootnotesEl(wrapper, themeObj);
 
       let wrapperStyle = styles.wrapper || '';
       if (fontFamily.value && fontMap[fontFamily.value]) {
@@ -475,7 +517,7 @@ const app = createApp({
       if (!theme) return '';
       const sampleMd = `## 标题示例\n\n这是一段正文，**加粗**和*斜体*。\n\n> 引用块内容\n\n- 列表项 1\n- 列表项 2`;
       const raw = md.render(sampleMd);
-      return applyThemeStyles(raw, theme.styles);
+      return applyThemeStyles(raw, theme.styles, key);
     });
 
     // ─── 暗色模式 ──────────────────────
@@ -492,6 +534,12 @@ const app = createApp({
       customColor.value = color;
       document.documentElement.style.setProperty('--primary', color);
       localStorage.setItem('md-converter-color', color);
+      doRender();
+    }
+    function resetCustomColor() {
+      customColor.value = '';
+      localStorage.removeItem('md-converter-color');
+      document.documentElement.style.setProperty('--primary', '#4f6ef7');
       doRender();
     }
     function setFontFamily(ff) { fontFamily.value = ff; localStorage.setItem('md-converter-font', ff); doRender(); }
@@ -579,10 +627,12 @@ const app = createApp({
       });
     }
 
+    let toastTimer = null;
     function showToast(target) {
+      clearTimeout(toastTimer);
       copyTarget.value = target;
       copySuccess.value = true;
-      setTimeout(() => { copySuccess.value = false; copyTarget.value = ''; }, 2000);
+      toastTimer = setTimeout(() => { copySuccess.value = false; copyTarget.value = ''; }, 2000);
     }
 
     // ─── 文件操作 ──────────────────────
@@ -703,65 +753,80 @@ const app = createApp({
 
     // ─── 导出文件名自动命名 ────────────
     function getExportFilename(ext) {
-      const match = markdownText.value.match(/^#\s+(.+)/m);
-      const title = match ? match[1].replace(/[*`~#\/\\:?"<>|]/g, '').trim() : 'mopai-export';
-      return title + '.' + ext;
+      const h1 = extractMarkdownHeadings(markdownText.value).find(h => h.level === 1);
+      const title = h1 ? h1.text.replace(/[*`~#\/\\:?"<>|]/g, '').trim() : 'mopai-export';
+      return (title || 'mopai-export') + '.' + ext;
+    }
+
+    function escapeHtmlText(str) {
+      return String(str || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     }
 
     // ─── 导出 HTML ──────────────────────
-    function exportHtml() {
+    async function exportHtml() {
       const previewEl = document.getElementById('preview-content');
       if (!previewEl) return;
+      const bodyHtml = await preparePublishHtml(false);
+      const themeBg = themes[currentTheme.value]?.bg || '#ffffff';
+      const title = escapeHtmlText(getPublishTitle());
+      const extraCss = customCss.value ? `\n  <style>${customCss.value}</style>` : '';
       const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Markdown Export</title>
+  <title>${title}</title>
+  <style>body { margin: 0; background: ${themeBg}; } .preview-body { max-width: 680px; margin: 0 auto; padding: 20px; }</style>${extraCss}
 </head>
-<body style="max-width: 680px; margin: 0 auto; padding: 20px;">
-${previewEl.innerHTML}
+<body>
+<article class="preview-body">
+${bodyHtml}
+</article>
 </body>
 </html>`;
-      const blob = new Blob([html], { type: 'text/html' });
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = getExportFilename('html');
       a.click();
       URL.revokeObjectURL(url);
-      showToast('export');
+      showToast('export-html');
     }
 
     // ─── 导出 PDF ────────────────────
-    function exportPdf() {
+    async function exportPdf() {
       const previewEl = document.getElementById('preview-content');
       if (!previewEl) return;
       const printWin = window.open('', '_blank');
-      const themeKey = currentTheme.value;
-      const themeStyles = themes[themeKey] ? Object.entries(themes[themeKey]).map(([k,v]) => `${k}:${v}`).join(';') : '';
+      if (!printWin) {
+        alert('浏览器拦截了打印窗口，请允许本页弹出窗口后重试');
+        return;
+      }
+      const bodyHtml = await preparePublishHtml(false);
+      const themeBg = themes[currentTheme.value]?.bg || '#ffffff';
+      const title = escapeHtmlText(getPublishTitle());
+      const extraCss = customCss.value ? `<style>${customCss.value}</style>` : '';
       printWin.document.write(`<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
-<title>MoPai 导出</title>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<title>${title}</title>
 <style>
-  body { max-width: 680px; margin: 0 auto; padding: 40px 30px; font-family: -apple-system, sans-serif; line-height: 1.8; color: #333; ${themeStyles} }
-  img { max-width: 100%; }
-  pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
-  code { font-family: Consolas, monospace; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #ddd; padding: 8px; }
-  @media print { body { margin: 0; padding: 20px; } }
-</style>
-</head><body>${previewEl.innerHTML}</body></html>`);
+  body { margin: 0; background: ${themeBg}; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .preview-body { max-width: 680px; margin: 0 auto; padding: 40px 30px; }
+  img { max-width: 100%; height: auto; }
+  @media print { body { margin: 0; } .preview-body { padding: 16px; } }
+</style>${extraCss}
+</head><body><article class="preview-body">${bodyHtml}</article></body></html>`);
       printWin.document.close();
-      setTimeout(() => { printWin.print(); }, 500);
+      showToast('export-pdf');
+      setTimeout(() => { printWin.focus(); printWin.print(); }, 400);
     }
 
     // ─── 导出长图 ────────────────────
     async function exportImage() {
       const previewEl = document.getElementById('preview-content');
       if (!previewEl || !window.html2canvas) { alert('html2canvas 未加载'); return; }
-      showToast('uploading');
+      showToast('exporting-image');
       // 保存原始样式，临时展开全部内容
       const parent = previewEl.parentElement;
       const origOverflow = parent ? parent.style.overflow : '';
@@ -771,10 +836,11 @@ ${previewEl.innerHTML}
         parent.style.height = 'auto';
       }
       try {
+        const bgColor = themes[currentTheme.value]?.bg || '#ffffff';
         const canvas = await html2canvas(previewEl, {
           scale: 2,
           useCORS: true,
-          backgroundColor: '#ffffff',
+          backgroundColor: bgColor,
           logging: false,
           scrollY: 0,
           height: previewEl.scrollHeight,
@@ -784,7 +850,7 @@ ${previewEl.innerHTML}
         link.download = getExportFilename('png');
         link.href = canvas.toDataURL('image/png');
         link.click();
-        showToast('export');
+        showToast('export-image');
       } catch (e) {
         alert('导出失败: ' + e.message);
       } finally {
@@ -797,12 +863,13 @@ ${previewEl.innerHTML}
     }
 
     // ─── 导出 Word ────────────────────
-    function exportDocx() {
+    async function exportDocx() {
       const previewEl = document.getElementById('preview-content');
       if (!previewEl || !window.htmlDocx) { alert('html-docx-js 未加载'); return; }
+      const bodyHtml = await preparePublishHtml(true);
       const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="font-family: -apple-system, sans-serif; line-height: 1.8; color: #333;">
-${previewEl.innerHTML}
+${bodyHtml}
 </body></html>`;
       const blob = window.htmlDocx.asBlob(html);
       const link = document.createElement('a');
@@ -810,7 +877,7 @@ ${previewEl.innerHTML}
       link.download = getExportFilename('docx');
       link.click();
       URL.revokeObjectURL(link.href);
-      showToast('export');
+      showToast('export-docx');
     }
 
     // ─── 数据备份（导出/导入全部本地数据）──────
@@ -829,7 +896,7 @@ ${previewEl.innerHTML}
       link.download = `mopai-backup-${stamp}.json`;
       link.click();
       URL.revokeObjectURL(link.href);
-      showToast('export');
+      showToast('export-backup');
     }
 
     function importBackup(event) {
@@ -859,8 +926,8 @@ ${previewEl.innerHTML}
 
     // ─── 分发到多平台（WechatSync）─────
     function getPublishTitle() {
-      const titleMatch = markdownText.value.match(/^#\s+(.+)/m);
-      return titleMatch ? titleMatch[1].replace(/[*`~#]/g, '').trim() : 'MoPai 文章';
+      const h1 = extractMarkdownHeadings(markdownText.value).find(h => h.level === 1);
+      return h1 ? h1.text.replace(/[*`~#]/g, '').trim() : 'MoPai 文章';
     }
 
     async function buildPublishPost() {
@@ -1110,6 +1177,14 @@ ${previewEl.innerHTML}
 
       if (!isMeta) return;
 
+      const key = event.key.toLowerCase();
+      const active = document.activeElement;
+      const isEditor = Boolean(active && active.classList?.contains('editor-textarea'));
+      const isOtherEditable = Boolean(
+        active && !isEditor &&
+        (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)
+      );
+
       const keyMap = {
         'b': () => insertFormat('bold'),
         'i': () => insertFormat('italic'),
@@ -1117,13 +1192,13 @@ ${previewEl.innerHTML}
       };
 
       if (event.shiftKey) {
-        if (event.key === 'C' || event.key === 'c') {
+        if (key === 'c' && !isOtherEditable) {
           event.preventDefault();
           copyToClipboard('wechat');
           return;
         }
-        // ⌘⇧Z 重做
-        if (event.key === 'Z' || event.key === 'z') {
+        // ⌘⇧Z 重做（仅在非其他输入框时接管，避免破坏 AI 聊天/查找框原生重做）
+        if (key === 'z' && !isOtherEditable) {
           event.preventDefault();
           redo();
           return;
@@ -1131,7 +1206,7 @@ ${previewEl.innerHTML}
       }
 
       // ⌘Z 撤回
-      if (event.key === 'z' && !event.shiftKey) {
+      if (key === 'z' && !event.shiftKey && !isOtherEditable) {
         event.preventDefault();
         undo();
         return;
@@ -1145,7 +1220,7 @@ ${previewEl.innerHTML}
       }
 
       // ⌘F 查找
-      if (event.key === 'f') {
+      if (key === 'f') {
         event.preventDefault();
         showFindReplace.value = true;
         nextTick(() => {
@@ -1155,15 +1230,15 @@ ${previewEl.innerHTML}
         return;
       }
 
-      if (event.key === 's') {
+      if (key === 's') {
         event.preventDefault();
         saveToHistory();
         return;
       }
 
-      if (keyMap[event.key]) {
+      if (keyMap[key] && !isOtherEditable) {
         event.preventDefault();
-        keyMap[event.key]();
+        keyMap[key]();
       }
     }
 
@@ -1235,13 +1310,8 @@ ${previewEl.innerHTML}
       const paddingTop = parseFloat(computedStyle.paddingTop) || 16;
       const currentLine = Math.floor((editor.scrollTop - paddingTop + lineHeight / 2) / lineHeight);
 
-      // 收集编辑器标题
-      const editorHeadings = [];
-      editorLines.forEach((line, idx) => {
-        if (/^#{1,3}\s/.test(line)) {
-          editorHeadings.push({ line: idx, text: line.replace(/^#{1,3}\s+/, '').trim() });
-        }
-      });
+      // 收集编辑器标题（跳过代码块）
+      const editorHeadings = extractMarkdownHeadings(markdownText.value);
 
       // 收集预览标题
       const previewHeadings = preview.querySelectorAll('h1, h2, h3');
@@ -1475,7 +1545,10 @@ ${previewEl.innerHTML}
     }
     function aiRestore(s) {
       if (s.theme !== currentTheme.value) selectTheme(s.theme);
-      if (s.color !== customColor.value) setCustomColor(s.color);
+      if (s.color !== customColor.value) {
+        if (s.color) setCustomColor(s.color);
+        else resetCustomColor();
+      }
       if (s.font !== fontFamily.value) setFontFamily(s.font);
       if (s.size !== fontSize.value) setFontSize(s.size);
       if (s.text !== markdownText.value) applyAiText(s.text);
@@ -1507,7 +1580,7 @@ ${previewEl.innerHTML}
         '用户要「起标题」「写摘要」「写小红书版」这类不改动正文的东西时，直接在回复里给文本，不要调工具。',
         '局部改写用 edit_text，整篇改写用 replace_document。不要臆造工具，不要重复调用同一个工具。',
         '',
-        `当前状态：主题=${themes[currentTheme.value].name}(${currentTheme.value})，主题色=${customColor.value}，字体=${fontFamily.value}，字号=${fontSize.value}，字数=${wordCount.value}`,
+        `当前状态：主题=${themes[currentTheme.value].name}(${currentTheme.value})，主题色=${activeColor.value}，字体=${fontFamily.value}，字号=${fontSize.value}，字数=${wordCount.value}`,
         '可选主题：' + Object.entries(themes).map(([k, v]) => `${k}(${v.name})`).join('、'),
         '',
         '当前正文：',
@@ -1552,6 +1625,7 @@ ${previewEl.innerHTML}
             provider: aiConfig.value.provider,
             key: aiKey.value,
             model: aiModel.value,
+            baseUrl: aiBaseUrl.value,
             messages,
             tools: Object.entries(AI_TOOLS).map(([name, t]) => ({
               type: 'function',
@@ -1605,6 +1679,7 @@ ${previewEl.innerHTML}
     function setAiProvider(id) { if (aiClient.PROVIDERS[id]) { aiConfig.value.provider = id; saveAiConfig(); } }
     function setAiKey(key) { aiConfig.value.keys[aiConfig.value.provider] = key.trim(); saveAiConfig(); }
     function setAiModel(model) { aiConfig.value.models[aiConfig.value.provider] = model.trim(); saveAiConfig(); }
+    function setAiBaseUrl(url) { aiConfig.value.baseUrl = url.trim(); saveAiConfig(); }
 
     // ─── 图床管理 ──────────────────────
     function addImageHistory(name, url) {
@@ -1799,13 +1874,13 @@ ${previewEl.innerHTML}
     return {
       markdownText, currentTheme, renderedHtml, charCount, wordCount, readingTime,
       themeList, showHistory, showSettings, showToc, historyList, copySuccess, copyTarget,
-      darkMode, customColor, fontFamily, fontSize, macCodeBlock,
+      darkMode, customColor, activeColor, fontFamily, fontSize, macCodeBlock,
       mobilePreview, wechatFootnote, hoveredTheme, themePreviewHtml, tocList,
       showImageGuide, toggleImageGuide, useImageHost, uploadingImage, toggleImageHost,
       showPublish, publishStatus, platforms, togglePublish, publishTo,
       selectTheme, toggleDarkMode, toggleSettings, toggleToc, toggleMobilePreview, toggleFootnote,
       onThemeHover, onThemeLeave,
-      setCustomColor, setFontFamily, setFontSize,
+      setCustomColor, resetCustomColor, setFontFamily, setFontSize,
       copyToClipboard, handleFileUpload, clearEditor, exportHtml,
       exportPdf, exportImage, exportDocx, exportBackup, importBackup, syncToMultiPlatform, showExportMenu,
       mobileTab,
@@ -1821,8 +1896,8 @@ ${previewEl.innerHTML}
       showLineNumbers, toggleLineNumbers, lineNumbers,
       findInEditor, replaceOne, replaceAll,
       // AI 助手
-      aiConfig, aiProviderList, aiProviderInfo, aiKey, aiModel, aiReady,
-      setAiProvider, setAiKey, setAiModel,
+      aiConfig, aiProviderList, aiProviderInfo, aiKey, aiModel, aiBaseUrl, aiReady,
+      setAiProvider, setAiKey, setAiModel, setAiBaseUrl,
       showAiPanel, aiMessages, aiInput, aiBusy, aiChips,
       toggleAiPanel, aiSend, aiStop, applyAiOp, undoAiOp,
       // Phase 3

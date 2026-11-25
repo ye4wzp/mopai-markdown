@@ -25,8 +25,8 @@ A local, install-free Markdown typesetting tool built for creators on WeChat Off
 
 There are plenty of "Markdown → WeChat" formatters. MoPai aims at the **full write-to-publish loop**. Here's what sets it apart from a plain formatter:
 
-- 🤖 **AI typesetter** — "switch to the tech theme and make the accent WeChat green" just works. The model drives the editor through a whitelisted tool set; every action gets a card you can undo. Plain formatters don't do this.
-- 🔌 **Scriptable / agent-friendly** — a `?load=` entry point lets an external pipeline generate an article and open it straight in the editor for review.
+- 🤖 **AI typesetter** — "switch to the tech theme and make the accent WeChat green" just works across all 13 themes. Supports custom OpenAI-compatible Base URLs (relays, Ollama, LM Studio) with undoable action cards.
+- 🔌 **CLI + MCP + `?load=` automation** — zero-dependency CLI (`bin/mopai.mjs`), stdio MCP Server (`bin/mopai-mcp.mjs`), and `?load=` draft injection let scripts and coding agents render themed HTML or open drafts directly in the editor.
 - 🚀 **One-click multi-platform distribution** — copies content in each platform's best format for 14 platforms; pairs with the [WechatSync](https://github.com/wechatsync/Wechatsync) extension to push drafts to 29+ platforms.
 - 🖼️ **Four export formats** — HTML / PDF / long-image PNG / Word, auto-named from the article title.
 - 📱 **Works offline** — installable PWA; fully usable on mobile (edit / preview tabs).
@@ -62,10 +62,21 @@ Or just use the hosted demo: <https://mopai-markdown.vercel.app>
 4. Toolbar → **Export ▾** → **🚀 Distribute to multiple platforms**
 5. Pick platforms in the WechatSync dialog and publish (as drafts you can review)
 
+## 🛠️ CLI & MCP Server
+
+Zero npm dependencies — runs directly on Node 22+:
+
+```bash
+node bin/mopai.mjs themes
+node bin/mopai.mjs render article.md --theme tech --color "#07c160" --full -o out.html
+node bin/mopai.mjs outline article.md --json
+node bin/mopai-mcp.mjs   # stdio MCP server: list_themes, render_markdown, format_file, extract_outline
+```
+
 ## 🧪 Development
 
 ```bash
-npm test   # runs the Chrome CDP integration test (needs Node 22+ and Chrome)
+npm test   # runs Chrome CDP integration tests + CLI/MCP unit tests (needs Node 22+ and Chrome)
 ```
 
 ## 🙏 Credits

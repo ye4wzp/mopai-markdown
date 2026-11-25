@@ -1,11 +1,16 @@
 {
   "name": "mopai-markdown",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
   "description": "优雅高效的多平台 Markdown 排版工具",
   "type": "module",
+  "bin": {
+    "mopai": "./bin/mopai.mjs",
+    "mopai-mcp": "./bin/mopai-mcp.mjs"
+  },
   "scripts": {
     "start": "python3 -m http.server 8080",
+    "mcp": "node bin/mopai-mcp.mjs",
     "test": "node --test"
   },
   "license": "MIT"

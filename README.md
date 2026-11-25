@@ -25,8 +25,8 @@
 
 「Markdown 转公众号」的工具不少，MoPai 想做的是**从写作到发布的完整闭环**——下面这些是它和纯排版工具不一样的地方：
 
-- 🤖 **AI 排版师** — 「换成适合技术文的主题，主色改微信绿」一句话搞定。AI 通过受限工具直接操作编辑器，每步操作一张卡片、一键撤销。**纯排版工具没有这个。**
-- 🔌 **可被脚本/Agent 驱动** — `?load=` 注入入口，外部流水线生成好文章后直接拉起编辑器待审。
+- 🤖 **AI 排版师** — 「换成适合技术文的主题，主色改微信绿」一句话搞定。AI 通过受限工具直接操作编辑器，每步操作一张卡片、一键撤销，支持自定义 OpenAI 兼容 Base URL（中转站 / Ollama / LM Studio）。**纯排版工具没有这个。**
+- 🔌 **CLI + MCP + 外部注入** — 自带零依赖 CLI（`bin/mopai.mjs`）、标准 stdio MCP Server（`bin/mopai-mcp.mjs`）与 `?load=` 注入入口，脚本或 Agent 可直接调用排版、提纲分析或拉起编辑器待审。
 - 🚀 **一键分发全平台** — 14 平台按最优格式一键复制；配合 [WechatSync](https://github.com/wechatsync/Wechatsync) 扩展可直接同步到 29+ 平台创建草稿。
 - 🖼️ **四种导出** — HTML / PDF / 长图 PNG / Word，文件自动以文章标题命名。
 - 📱 **离线可用** — PWA 可安装为桌面应用，手机端编辑/预览功能完整。
@@ -112,14 +112,45 @@ MoPai 内置了 [WechatSync](https://github.com/wechatsync/Wechatsync) SDK，支
 
 ## 🤖 AI 助手
 
-在 ⚙️ 设置面板填入 API Key 后，点顶栏「🤖 AI」打开助手面板。支持 DeepSeek / 智谱 GLM / SiliconFlow / 通义千问 / OpenAI / OpenRouter，**Key 只存在本机浏览器，不经过任何服务器**。
+在 ⚙️ 设置面板填入 API Key（或选择「自定义 (OpenAI 兼容)」填入自己的 Base URL）后，点顶栏「🤖 AI」打开助手面板。支持 DeepSeek / 智谱 GLM / SiliconFlow / 通义千问 / OpenAI / OpenRouter 以及任意 OpenAI 兼容中转站或本地模型（Ollama / LM Studio），**配置只存在本机浏览器，不经过任何服务器**。
 
 能做两类事：
 
-- **直接操作编辑器** — 换主题、改主题色/字体/字号、局部或整篇改写。每步操作在面板里生成一张卡片，可单独撤销
+- **直接操作编辑器** — 换主题、改主题色（13 套主题全部支持自定义主色与一键恢复默认）/字体/字号、局部或整篇改写。每步操作在面板里生成一张卡片，可单独撤销
 - **生成文本** — 起标题、写摘要、写小红书版文案，直接回复在对话里，不动正文
 
 安全边界：模型只能输出结构化 JSON，经校验后调用白名单里的 5 个函数，**永不 eval**。发布、清空、导出等不可逆操作不在白名单里，AI 无法触发。整篇改写必须由你点「应用」才生效。
+
+## 🛠️ CLI 与 MCP Server（零依赖，供脚本与 Agent 直接调用）
+
+除浏览器编辑外，MoPai 内置无第三方依赖的 Node 渲染内核，支持命令行与标准 MCP（stdio JSON-RPC 2.0）直接调用：
+
+```bash
+# 列出全部 13 种主题
+node bin/mopai.mjs themes
+
+# 命令行直接渲染 Markdown 为带内联样式的公众号 HTML
+node bin/mopai.mjs render article.md --theme tech --color "#07c160" --full -o out.html
+
+# 提取标题、字数与大纲（自动跳过代码块中的 # 注释）
+node bin/mopai.mjs outline article.md --json
+
+# 启动 MCP Server（提供 list_themes / render_markdown / format_file / extract_outline）
+node bin/mopai-mcp.mjs
+```
+
+Claude Code / Codex / Antigravity MCP 配置示例：
+
+```json
+{
+  "mcpServers": {
+    "mopai": {
+      "command": "node",
+      "args": ["/path/to/mopai-markdown/bin/mopai-mcp.mjs"]
+    }
+  }
+}
+```
 
 ## 🔌 外部自动化注入草稿
 
@@ -188,15 +219,20 @@ mopai-markdown/
 ├── index.html          # 主页面
 ├── manifest.json       # PWA 配置
 ├── service-worker.js   # Service Worker（离线缓存）
+├── bin/
+│   ├── mopai.mjs       # 命令行工具（themes / render / outline / mcp）
+│   └── mopai-mcp.mjs   # 零依赖 stdio MCP Server
+├── lib/
+│   └── renderer.mjs    # Node 渲染内核（复用 js/themes.js）
 ├── css/
 │   └── styles.css      # 样式文件
 ├── js/
 │   ├── app.js          # Vue 应用主逻辑
-│   ├── themes.js       # 13 种主题定义 + 示例内容
-│   ├── ai-client.js    # LLM 传输层（OpenAI 兼容 + SSE 流式，BYOK）
+│   ├── themes.js       # 13 种主题定义 + 示例内容（全主题支持主色覆盖）
+│   ├── ai-client.js    # LLM 传输层（OpenAI 兼容 + 自定义 Base URL + SSE 流式）
 │   ├── templates.js    # 模板库
-│   └── publish-utils.js # 发布 HTML 兼容处理
-├── tests/              # Chrome CDP 集成测试
+│   └── publish-utils.js # 发布 HTML 兼容处理（含代码着色内联与 Mermaid 转 PNG）
+├── tests/              # Chrome CDP 集成测试 + CLI / MCP 单元测试
 ├── screenshots/        # 项目截图
 └── README.md
 ```

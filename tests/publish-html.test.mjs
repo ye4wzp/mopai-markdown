@@ -327,6 +327,112 @@ async function main() {
     assert.match(missingBridgeResult.result.value.copiedHtml, /<h1\b[^>]*style=/, 'Missing $syncer fallback should copy rich HTML');
     assert.match(missingBridgeResult.result.value.status, /扩展|注入|Chrome/, 'Missing $syncer fallback should explain the browser extension injection problem');
 
+    // Verify new bug fixes in live browser:
+    // 1. Multi-paragraph info card + code-block comment skipped in TOC
+    // 2. Custom primary color works on non-default themes (e.g. tech)
+    // 3. Export PDF no longer injects [object Object] CSS
+    // 4. Custom OpenAI Base URL provider is selectable and readies AI without key
+    // 5. Cmd+Z inside find input does not hijack editor markdownText
+    const fixesResult = await cdp.send('Runtime.evaluate', {
+      expression: `
+        (async () => {
+          const ta = document.querySelector('.editor-textarea');
+          const sample = [
+            '# 新文章标题',
+            '',
+            '\`\`\`python',
+            '# 代码注释不是标题',
+            '\`\`\`',
+            '',
+            ':::tip 多段卡片',
+            '第一段内容',
+            '',
+            '第二段内容',
+            ':::',
+            '',
+            '## 真正二级标题',
+          ].join('\\n');
+          ta.value = sample;
+          ta.dispatchEvent(new Event('input'));
+          await new Promise(r => setTimeout(r, 450));
+
+          // Open TOC
+          Array.from(document.querySelectorAll('.header-btn'))
+            .find(b => b.textContent.includes('目录')).click();
+          await new Promise(r => setTimeout(r, 50));
+          const tocTexts = Array.from(document.querySelectorAll('.toc-item')).map(el => el.textContent.trim());
+
+          const previewHtmlBeforeColor = document.querySelector('#preview-content').innerHTML;
+
+          // Switch theme to tech + apply custom color #07c160
+          Array.from(document.querySelectorAll('.theme-btn'))
+            .find(b => b.textContent.includes('技术风格')).click();
+          await new Promise(r => setTimeout(r, 50));
+          Array.from(document.querySelectorAll('.header-btn'))
+            .find(b => b.textContent.includes('设置')).click();
+          await new Promise(r => setTimeout(r, 50));
+          const colorInput = document.querySelector('input[type="color"]');
+          colorInput.value = '#07c160';
+          colorInput.dispatchEvent(new Event('input'));
+          await new Promise(r => setTimeout(r, 50));
+          const previewHtmlTechColor = document.querySelector('#preview-content').innerHTML;
+
+          // Check custom AI provider Base URL input
+          const select = document.querySelector('.settings-panel select');
+          select.value = 'custom';
+          select.dispatchEvent(new Event('change'));
+          await new Promise(r => setTimeout(r, 50));
+          const baseInput = document.querySelector('.settings-panel input[placeholder*="Base URL"]');
+          const hasCustomBaseInput = Boolean(baseInput);
+
+          // Intercept window.open for exportPdf
+          let pdfDocHtml = '';
+          window.open = () => ({
+            document: {
+              write: s => { pdfDocHtml += s; },
+              close: () => {},
+            },
+            focus: () => {},
+            print: () => {},
+          });
+          document.querySelector('.export-dropdown-wrapper > button').click();
+          await new Promise(r => setTimeout(r, 50));
+          Array.from(document.querySelectorAll('.export-dropdown button'))
+            .find(b => b.textContent.includes('导出 PDF')).click();
+          await new Promise(r => setTimeout(r, 150));
+
+          // Verify Cmd+Z inside find input does not revert editor content
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true }));
+          await new Promise(r => setTimeout(r, 50));
+          const findInput = document.querySelector('.find-input');
+          findInput.focus();
+          findInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true }));
+          await new Promise(r => setTimeout(r, 50));
+          const editorAfterFindUndo = document.querySelector('.editor-textarea').value;
+
+          return {
+            tocTexts,
+            hasMultiParaCard: previewHtmlBeforeColor.includes('第一段内容') && previewHtmlBeforeColor.includes('第二段内容') && !previewHtmlBeforeColor.includes(':::tip'),
+            techHasCustomColor: previewHtmlTechColor.includes('#07c160') || previewHtmlTechColor.includes('rgb(7, 193, 96)'),
+            hasCustomBaseInput,
+            pdfDocHtml,
+            editorPreserved: editorAfterFindUndo === sample,
+          };
+        })()
+      `,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+
+    const f = fixesResult.result.value;
+    assert.deepEqual(f.tocTexts, ['新文章标题', '真正二级标题'], 'TOC should skip # comments inside fenced code blocks');
+    assert.equal(f.hasMultiParaCard, true, 'Multi-paragraph :::tip info card should render cleanly');
+    assert.equal(f.techHasCustomColor, true, 'Custom primary color should apply to non-default themes like tech');
+    assert.equal(f.hasCustomBaseInput, true, 'Custom OpenAI-compatible Base URL input should appear in settings');
+    assert.doesNotMatch(f.pdfDocHtml, /\[object Object\]/, 'exportPdf must not emit [object Object] into <style>');
+    assert.match(f.pdfDocHtml, /<title>新文章标题<\/title>/, 'exportPdf should use article title');
+    assert.equal(f.editorPreserved, true, 'Cmd+Z inside find input must not hijack editor undo');
+
     cdp.close();
   } finally {
     chrome.kill('SIGTERM');

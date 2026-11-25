@@ -67,7 +67,12 @@
     <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
     <span v-if="copyTarget === 'wechat'">✅ 已复制，可粘贴到公众号</span>
     <span v-else-if="copyTarget === 'save'">✅ 已保存</span>
-    <span v-else-if="copyTarget === 'export'">✅ 已导出 HTML</span>
+    <span v-else-if="copyTarget === 'export' || copyTarget === 'export-html'">✅ 已导出 HTML</span>
+    <span v-else-if="copyTarget === 'export-pdf'">✅ 已打开 PDF 打印窗口</span>
+    <span v-else-if="copyTarget === 'export-image'">✅ 已导出长图 PNG</span>
+    <span v-else-if="copyTarget === 'export-docx'">✅ 已导出 Word 文档</span>
+    <span v-else-if="copyTarget === 'export-backup'">✅ 已导出数据备份</span>
+    <span v-else-if="copyTarget === 'exporting-image'">⏳ 正在生成长图...</span>
     <span v-else-if="copyTarget === 'image'">✅ 图片已插入</span>
     <span v-else-if="copyTarget === 'uploading'">⏳ 正在上传到图床...</span>
     <span v-else-if="copyTarget === 'injected'">✅ 已载入外部草稿（本标签页独立保存）</span>
@@ -427,9 +432,10 @@
         <select :value="aiConfig.provider" @change="setAiProvider($event.target.value)" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
           <option v-for="p in aiProviderList" :key="p.id" :value="p.id">{{ p.name }}{{ p.proxy ? '（国内需代理）' : '' }}</option>
         </select>
+        <input v-if="aiProviderInfo.customBase" type="text" :value="aiBaseUrl" @input="setAiBaseUrl($event.target.value)" placeholder="API Base URL（如 https://api.example.com/v1）" style="width:100%;margin-top:8px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
         <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-          <input type="password" :value="aiKey" @input="setAiKey($event.target.value)" :placeholder="aiProviderInfo.name + ' API Key'" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
-          <a :href="aiProviderInfo.keyUrl" target="_blank" style="font-size:11px;color:var(--primary);white-space:nowrap;">获取 Key</a>
+          <input type="password" :value="aiKey" @input="setAiKey($event.target.value)" :placeholder="aiProviderInfo.customBase ? 'API Key（本地模型可留空）' : (aiProviderInfo.name + ' API Key')" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
+          <a v-if="aiProviderInfo.keyUrl" :href="aiProviderInfo.keyUrl" target="_blank" style="font-size:11px;color:var(--primary);white-space:nowrap;">获取 Key</a>
         </div>
         <input type="text" :value="aiModel" @input="setAiModel($event.target.value)" :placeholder="'模型名，留空用 ' + aiProviderInfo.defaultModel" style="width:100%;margin-top:8px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
         <button v-if="aiKey" class="btn" style="margin-top:8px;font-size:11px;padding:4px 10px;" @click="setAiKey('')">清除 Key</button>
@@ -449,21 +455,24 @@
 
       <!-- 主题色 -->
       <div class="settings-section">
-        <div class="settings-section-title">🎨 主题色</div>
+        <div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>🎨 主题色</span>
+          <button v-if="customColor" class="btn" style="font-size:11px;padding:2px 8px;" @click="resetCustomColor">恢复主题默认</button>
+        </div>
         <div class="color-grid">
           <div
             class="color-swatch"
             v-for="c in colorPresets"
             :key="c.color"
             :style="{ background: c.color }"
-            :class="{ active: customColor === c.color }"
+            :class="{ active: activeColor === c.color }"
             :title="c.name"
             @click="setCustomColor(c.color)"
           ></div>
         </div>
         <div class="color-input-row">
-          <input type="color" :value="customColor" @input="setCustomColor($event.target.value)">
-          <span>自定义颜色: {{ customColor }}</span>
+          <input type="color" :value="activeColor" @input="setCustomColor($event.target.value)">
+          <span>{{ customColor ? '自定义颜色' : '主题默认色' }}: {{ activeColor }}</span>
         </div>
       </div>
 
@@ -612,7 +621,7 @@
     </div>
 
     <div v-if="!aiReady" class="ai-hint">
-      先在 ⚙️ 设置面板配置 AI 服务的 API Key
+      先在 ⚙️ 设置面板配置 AI 服务（API Key 或自定义 Base URL）
     </div>
 
     <div v-if="aiReady && !aiMessages.length" class="ai-chips">
@@ -689,11 +698,11 @@
 </div>
 
 <!-- 主题 + 模板 + 应用 -->
-<script src="js/themes.js"></script>
-<script src="js/ai-client.js?v=20260809a"></script>
+<script src="js/themes.js?v=20261126"></script>
+<script src="js/ai-client.js?v=20261126"></script>
 <script src="js/templates.js"></script>
-<script src="js/publish-utils.js?v=20260427b"></script>
-<script src="js/app.js?v=20260809b"></script>
+<script src="js/publish-utils.js?v=20261126"></script>
+<script src="js/app.js?v=20261126"></script>
 
 <!-- PWA Service Worker -->
 <script>

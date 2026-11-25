@@ -74,6 +74,65 @@
     });
   }
 
+  function svgToPngDataUrl(svgEl) {
+    if (typeof document === 'undefined' || typeof XMLSerializer === 'undefined') {
+      return Promise.resolve(null);
+    }
+    const rect = svgEl.getBoundingClientRect();
+    const vb = svgEl.viewBox?.baseVal;
+    const width = Math.ceil(rect.width || vb?.width || parseFloat(svgEl.getAttribute('width')) || 600);
+    const height = Math.ceil(rect.height || vb?.height || parseFloat(svgEl.getAttribute('height')) || 320);
+    if (!width || !height) return Promise.resolve(null);
+
+    const svgClone = svgEl.cloneNode(true);
+    svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgClone.setAttribute('width', String(width));
+    svgClone.setAttribute('height', String(height));
+    const serialized = new XMLSerializer().serializeToString(svgClone);
+    const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(serialized);
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = width * scale;
+          canvas.height = height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/png'));
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = svgDataUrl;
+    });
+  }
+
+  async function inlineMermaidSvgs(cloneEl, sourceEl) {
+    if (!sourceEl || typeof document === 'undefined') return;
+    const sourceDiagrams = Array.from(sourceEl.querySelectorAll('.mermaid-diagram svg'));
+    const cloneDiagrams = Array.from(cloneEl.querySelectorAll('.mermaid-diagram svg'));
+    if (!sourceDiagrams.length) return;
+
+    await Promise.all(cloneDiagrams.map(async (cloneSvg, index) => {
+      const sourceSvg = sourceDiagrams[index];
+      if (!sourceSvg) return;
+      const pngUrl = await svgToPngDataUrl(sourceSvg);
+      if (!pngUrl) return;
+      const img = document.createElement('img');
+      img.setAttribute('src', pngUrl);
+      img.setAttribute('alt', 'Mermaid 图表');
+      img.setAttribute('style', 'max-width: 100%; height: auto; display: block; margin: 14px auto;');
+      cloneSvg.replaceWith(img);
+    }));
+  }
+
   async function inlineLocalImages(cloneEl, imageToBase64) {
     if (typeof imageToBase64 !== 'function') return;
 
@@ -161,6 +220,9 @@
 
     const cloneEl = previewEl.cloneNode(true);
     inlineCodeTokenStyles(cloneEl, previewEl);
+    if (options.inlineMermaid !== false) {
+      await inlineMermaidSvgs(cloneEl, previewEl);
+    }
     await inlineLocalImages(cloneEl, options.imageToBase64);
 
     if (options.simple) {
@@ -173,5 +235,6 @@
   return {
     prepareHtml,
     simplifyHtmlForPlatform,
+    svgToPngDataUrl,
   };
 });
