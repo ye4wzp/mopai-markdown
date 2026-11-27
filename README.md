@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/media/hero-cover.png" alt="MoPai 墨排 — Markdown Typesetting" width="820">
+
 # MoPai 墨排 ✒️
 
 **不只是排版 —— 一句话让 AI 帮你排版，一键分发 14+ 平台。**

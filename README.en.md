@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/media/hero-cover.png" alt="MoPai — Markdown Typesetting" width="820">
+
 # MoPai ✒️
 
 **More than a formatter — tell an AI how you want it typeset, then distribute to 14+ platforms in one click.**
