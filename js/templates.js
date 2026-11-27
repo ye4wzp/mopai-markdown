@@ -6,6 +6,9 @@ const templateLibrary = [
   {
     key: 'tech-tutorial',
     name: '💻 技术教程',
+    title: '技术教程',
+    color: '#4f6ef7',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><polyline points="8 10 11 12.5 8 15"/><line x1="13" y1="15" x2="16.5" y2="15"/></svg>',
     desc: '编程教程、工具使用指南',
     content: `# 技术教程标题
 
@@ -53,6 +56,9 @@ const templateLibrary = [
   {
     key: 'product-review',
     name: '📦 产品评测',
+    title: '产品评测',
+    color: '#f59e0b',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 3.5 7v10L12 21.5 20.5 17V7L12 2.5Z"/><polyline points="3.5 7 12 11.5 20.5 7"/><line x1="12" y1="11.5" x2="12" y2="21.5"/></svg>',
     desc: '科技产品、工具评测',
     content: `# 产品名称 评测
 
@@ -105,6 +111,9 @@ const templateLibrary = [
   {
     key: 'weekly-report',
     name: '📊 周报/月报',
+    title: '周报 / 月报',
+    color: '#10b981',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></svg>',
     desc: '工作汇报、项目总结',
     content: `# 周报 | YYYY.MM.DD - MM.DD
 
@@ -144,6 +153,9 @@ const templateLibrary = [
   {
     key: 'interview',
     name: '🎯 面试经验',
+    title: '面试经验',
+    color: '#8b5cf6',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>',
     desc: '面试复盘、经验分享',
     content: `# 公司名 - 岗位名 面试经验
 
@@ -191,6 +203,9 @@ const templateLibrary = [
   {
     key: 'book-notes',
     name: '📚 读书笔记',
+    title: '读书笔记',
+    color: '#0ea5e9',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M9 7h6"/><path d="M9 11h4"/></svg>',
     desc: '阅读笔记、书评',
     content: `# 《书名》读书笔记
 
@@ -236,6 +251,9 @@ const templateLibrary = [
   {
     key: 'travel',
     name: '✈️ 旅行游记',
+    title: '旅行游记',
+    color: '#ec4899',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>',
     desc: '旅行攻略、游记',
     content: `# 目的地名称 旅行游记
 
@@ -292,6 +310,9 @@ const templateLibrary = [
   {
     key: 'readme',
     name: '📘 项目 README',
+    title: '项目 README',
+    color: '#14b8a6',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>',
     desc: 'GitHub 项目文档',
     content: `# 项目名称
 
@@ -333,6 +354,9 @@ import { something } from 'your-package';
   {
     key: 'annual-review',
     name: '🎆 年终总结',
+    title: '年终总结',
+    color: '#f97316',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
     desc: '年度回顾、个人总结',
     content: `# YYYY 年终总结
 
@@ -385,6 +409,9 @@ import { something } from 'your-package';
   {
     key: 'news',
     name: '📰 新闻稿',
+    title: '新闻稿',
+    color: '#6366f1',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>',
     desc: '新闻通稿、公关稿',
     content: `# 新闻标题
 
@@ -422,6 +449,9 @@ import { something } from 'your-package';
   {
     key: 'blank',
     name: '📝 空白模板',
+    title: '空白模板',
+    color: '#64748b',
+    icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>',
     desc: '仅标题，自由发挥',
     content: `# 标题
 

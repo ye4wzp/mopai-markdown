@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <!-- mmbiz.qpic.cn 等图床有防盗链，带 Referer 会返回占位图导致预览不显示 -->
   <meta name="referrer" content="no-referrer">
   <title>MoPai 墨排 — 优雅高效的多平台 Markdown 排版工具</title>
@@ -28,18 +28,7 @@
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"
           integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp"
           crossorigin="anonymous"></script>
-  <!-- Mermaid -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.6/dist/mermaid.min.js"
-          integrity="sha384-qX9VvWkP79m/O121ZE6sOYp0nf/pldQgtvWDbkpzi+3mUo4Wn4Ix4cFzNPay3VaB"
-          crossorigin="anonymous"></script>
-  <!-- html2canvas (长图导出) -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
-          integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H"
-          crossorigin="anonymous"></script>
-  <!-- html-docx-js (Word 导出) — 修正为存在的 0.3.1（旧 0.4.8/min 链接为 404） -->
-  <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"
-          integrity="sha384-TtrQp5nveof/QP1+f/OLiEHL3GuOIRyl3IfsGxu5X45VO2vHeT4HRNmQuTR3Ea3w"
-          crossorigin="anonymous"></script>
+  <!-- Mermaid / html2canvas / html-docx-js 按需懒加载（均保留锁定版本与 SRI，见 js/app.js），大幅降低首屏阻塞 -->
   <!-- WechatSync 多平台分发 SDK（锁定提交号 + SRI，内容不可变） -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wechatsync/article-syncjs@774a7604d02d70df5dc97415b8f5bae5df6052ce/dist/styles.css"
         integrity="sha384-Qc/dh0nTWjrixaJyR+Ti0HOwkMOLOALXTTGLo4MSLr05VeIeV1pQc5/8WiVTAX8h"
@@ -49,34 +38,349 @@
           crossorigin="anonymous"></script>
   
   <!-- 样式 -->
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20261127i">
   
-  <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖋️</text></svg>">
+  <!-- Favicon（与品牌 Logo 统一的矢量钢笔尖图标） -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%231b2238'/><stop offset='1' stop-color='%233955d9'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><g transform='translate(4 4)' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3 17.5 11.5 15 17.5H9L6.5 11.5 12 3z'/><path d='M12 3v8'/><circle cx='12' cy='11.5' r='1.4' fill='white' stroke='none'/><path d='M8.5 20.5h7'/></g></svg>">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#4f6ef7">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 
+<!-- ─── 统一线性 SVG 图标精灵表（命名空间 mp-i-*，共享 24×24 网格与统一描边） ─── -->
+<svg class="svg-sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- 品牌钢笔尖 -->
+    <symbol id="mp-i-logo-nib" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M12 3 17.5 11.5 15 17.5H9L6.5 11.5 12 3z"/>
+      <path d="M12 3v8"/>
+      <circle cx="12" cy="11.5" r="1.4" fill="currentColor" stroke="none"/>
+      <path d="M8.5 20.5h7"/>
+    </symbol>
+    <!-- 顶栏核心操作 -->
+    <symbol id="mp-i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+      <path d="M20 3v4"/><path d="M22 5h-4"/>
+    </symbol>
+    <symbol id="mp-i-images" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+      <circle cx="9" cy="10" r="1.5"/>
+      <path d="m21 15-4.5-4.5a2 2 0 0 0-2.828 0L6 18.2"/>
+    </symbol>
+    <symbol id="mp-i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/>
+      <path d="m21.854 2.147-10.94 10.939"/>
+    </symbol>
+    <symbol id="mp-i-list-tree" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M21 6H3"/><path d="M21 12H8"/><path d="M21 18H8"/>
+      <path d="M3 12h.01"/><path d="M3 18h.01"/>
+    </symbol>
+    <symbol id="mp-i-smartphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <rect x="6" y="2.5" width="12" height="19" rx="2.5"/>
+      <line x1="11" y1="18" x2="13" y2="18"/>
+    </symbol>
+    <symbol id="mp-i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2"/><path d="M12 20v2"/>
+      <path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/>
+      <path d="M2 12h2"/><path d="M20 12h2"/>
+      <path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+    </symbol>
+    <symbol id="mp-i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+    </symbol>
+    <symbol id="mp-i-maximize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+      <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+    </symbol>
+    <symbol id="mp-i-minimize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
+      <line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>
+    </symbol>
+    <symbol id="mp-i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </symbol>
+    <symbol id="mp-i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <line x1="21" y1="6" x2="14" y2="6"/><line x1="10" y1="6" x2="3" y2="6"/>
+      <line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/>
+      <line x1="21" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="3" y2="18"/>
+      <circle cx="12" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/>
+    </symbol>
+    <!-- 编辑器 & 工具栏 -->
+    <symbol id="mp-i-layout-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+    </symbol>
+    <symbol id="mp-i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M12 2 2 7l10 5 10-5-10-5z"/>
+      <path d="m2 17 10 5 10-5"/>
+      <path d="m2 12 10 5 10-5"/>
+    </symbol>
+    <symbol id="mp-i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </symbol>
+    <symbol id="mp-i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </symbol>
+    <symbol id="mp-i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M3 6h18"/>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      <line x1="10" y1="11" x2="10" y2="17"/>
+      <line x1="14" y1="11" x2="14" y2="17"/>
+    </symbol>
+    <symbol id="mp-i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+    </symbol>
+    <symbol id="mp-i-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M12 20h9"/>
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+    </symbol>
+    <symbol id="mp-i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </symbol>
+    <symbol id="mp-i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+    </symbol>
+    <symbol id="mp-i-code-xml" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
+    </symbol>
+    <symbol id="mp-i-quote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M10 11H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v6c0 2.5-1.5 4.2-4 5"/>
+      <path d="M19 11h-4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v6c0 2.5-1.5 4.2-4 5"/>
+    </symbol>
+    <symbol id="mp-i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    </symbol>
+    <symbol id="mp-i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/>
+      <circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="mp-i-list-ordered" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/>
+      <path d="M4 6h1v4"/><path d="M4 10h2"/>
+      <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
+    </symbol>
+    <symbol id="mp-i-hash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/>
+      <line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>
+    </symbol>
+    <symbol id="mp-i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <rect x="3" y="4" width="18" height="16" rx="2"/>
+      <path d="M3 10h18"/><path d="M3 15h18"/><path d="M9 10v10"/>
+    </symbol>
+    <symbol id="mp-i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <line x1="4" y1="12" x2="20" y2="12"/>
+    </symbol>
+    <symbol id="mp-i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <circle cx="12" cy="12" r="9"/>
+      <line x1="12" y1="16" x2="12" y2="12"/>
+      <line x1="12" y1="8" x2="12.01" y2="8"/>
+    </symbol>
+    <symbol id="mp-i-workflow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <rect x="3" y="3" width="7" height="6" rx="1.5"/>
+      <rect x="14" y="15" width="7" height="6" rx="1.5"/>
+      <rect x="14" y="3" width="7" height="6" rx="1.5"/>
+      <path d="M10 6h4"/><path d="M6.5 9v6a3 3 0 0 0 3 3H14"/>
+    </symbol>
+    <!-- 方向指示 -->
+    <symbol id="mp-i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <path d="m6 9 6 6 6-6"/>
+    </symbol>
+    <symbol id="mp-i-chevron-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <path d="m18 15-6-6-6 6"/>
+    </symbol>
+    <symbol id="mp-i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <path d="m9 18 6-6-6-6"/>
+    </symbol>
+    <!-- 统计 / 预览 / 导出 -->
+    <symbol id="mp-i-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M2 5.5A2.5 2.5 0 0 1 4.5 3H10a3 3 0 0 1 2 1 3 3 0 0 1 2-1h5.5A2.5 2.5 0 0 1 22 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 0 0-2 2 2 2 0 0 0-2-2H3.5A1.5 1.5 0 0 1 2 18.5z"/>
+      <path d="M12 4v18"/>
+    </symbol>
+    <symbol id="mp-i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="mp-i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
+      <path d="M12 7v5l3 2"/>
+    </symbol>
+    <symbol id="mp-i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+      <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/>
+      <path d="M7 3v4a1 1 0 0 0 1 1h7"/>
+    </symbol>
+    <symbol id="mp-i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <rect x="9" y="9" width="12" height="12" rx="2"/>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </symbol>
+    <symbol id="mp-i-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+    </symbol>
+    <symbol id="mp-i-file-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/>
+    </symbol>
+    <symbol id="mp-i-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <polyline points="6 9 6 2 18 2 18 9"/>
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="8" rx="1"/>
+    </symbol>
+    <!-- 设置 & 媒体中心 & 小红书 -->
+    <symbol id="mp-i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+      <polyline points="7 15 10 12 7 9"/>
+      <line x1="12" y1="15" x2="17" y2="15"/>
+    </symbol>
+    <symbol id="mp-i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/>
+      <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>
+    </symbol>
+    <symbol id="mp-i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/>
+      <circle cx="8" cy="10" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="16.5" cy="10" r="1" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="mp-i-type" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <polyline points="4 7 4 4 20 4 20 7"/>
+      <line x1="9" y1="20" x2="15" y2="20"/>
+      <line x1="12" y1="4" x2="12" y2="20"/>
+    </symbol>
+    <symbol id="mp-i-text-size" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M3 18 7.5 6 12 18"/><path d="M4.6 14h5.8"/>
+      <path d="M18 8v10"/><path d="m15 11 3-3 3 3"/><path d="m15 15 3 3 3-3"/>
+    </symbol>
+    <symbol id="mp-i-keyboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <rect x="2" y="5" width="20" height="14" rx="2.5"/>
+      <path d="M6 10h.01"/><path d="M10 10h.01"/><path d="M14 10h.01"/><path d="M18 10h.01"/>
+      <path d="M7 15h10"/>
+    </symbol>
+    <symbol id="mp-i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <ellipse cx="12" cy="5" rx="8" ry="3"/>
+      <path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/>
+      <path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>
+    </symbol>
+    <symbol id="mp-i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M17.5 19H9a6.5 6.5 0 1 1 5.66-9.7A4.5 4.5 0 1 1 17.5 19Z"/>
+    </symbol>
+    <symbol id="mp-i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </symbol>
+    <symbol id="mp-i-shrink" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
+      <line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>
+    </symbol>
+    <symbol id="mp-i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M3 12h18"/>
+      <path d="M12 3a13.5 13.5 0 0 1 3.5 9A13.5 13.5 0 0 1 12 21a13.5 13.5 0 0 1-3.5-9A13.5 13.5 0 0 1 12 3z"/>
+    </symbol>
+    <symbol id="mp-i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+      <path d="M3 3v5h5"/>
+      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+      <path d="M16 16h5v5"/>
+    </symbol>
+    <symbol id="mp-i-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="m16.5 9.4-9-5.19"/>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      <polyline points="3.29 7 12 12 20.71 7"/>
+      <line x1="12" y1="22" x2="12" y2="12"/>
+    </symbol>
+    <symbol id="mp-i-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <rect x="6" y="6" width="12" height="12" rx="2"/>
+    </symbol>
+    <!-- 状态指示 -->
+    <symbol id="mp-i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="m8.5 12.2 2.3 2.3 4.7-5"/>
+    </symbol>
+    <symbol id="mp-i-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </symbol>
+    <symbol id="mp-i-x-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,2)">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="m15 9-6 6"/><path d="m9 9 6 6"/>
+    </symbol>
+    <symbol id="mp-i-rotate-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+      <path d="M3 3v5h5"/>
+    </symbol>
+    <symbol id="mp-i-file-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M12 22h6a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <path d="M5 17.5 11.5 11a1.77 1.77 0 0 1 2.5 2.5L7.5 20 4 21l1-3.5z"/>
+    </symbol>
+    <symbol id="mp-i-wand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/>
+      <path d="m14 7 3 3"/>
+      <path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>
+    </symbol>
+    <symbol id="mp-i-diff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M12 3v14"/><path d="M5 10h14"/><path d="M5 21h14"/>
+    </symbol>
+    <symbol id="mp-i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.85)">
+      <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
+    </symbol>
+    <symbol id="mp-i-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="stroke-width:var(--icon-stroke,1.9)">
+      <path d="M15 3h6v6"/><path d="M10 14 21 3"/>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+    </symbol>
+  </defs>
+</svg>
+
 <div id="app" :class="{ dark: darkMode, 'focus-mode': focusMode }">
   <!-- Toast -->
-  <div class="toast" v-if="copySuccess">
-    <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-    <span v-if="copyTarget === 'wechat'">✅ 已复制，可粘贴到公众号</span>
-    <span v-else-if="copyTarget === 'save'">✅ 已保存</span>
-    <span v-else-if="copyTarget === 'export' || copyTarget === 'export-html'">✅ 已导出 HTML</span>
-    <span v-else-if="copyTarget === 'export-pdf'">✅ 已打开 PDF 打印窗口</span>
-    <span v-else-if="copyTarget === 'export-image'">✅ 已导出长图 PNG</span>
-    <span v-else-if="copyTarget === 'export-docx'">✅ 已导出 Word 文档</span>
-    <span v-else-if="copyTarget === 'export-backup'">✅ 已导出数据备份</span>
-    <span v-else-if="copyTarget === 'exporting-image'">⏳ 正在生成长图...</span>
-    <span v-else-if="copyTarget === 'image'">✅ 图片已插入</span>
-    <span v-else-if="copyTarget === 'uploading'">⏳ 正在上传到图床...</span>
-    <span v-else-if="copyTarget === 'injected'">✅ 已载入外部草稿（本标签页独立保存）</span>
-    <span v-else>✅ 已复制</span>
+  <div class="toast" :class="{ 'is-loading': toastKind === 'loading', 'is-warn': toastKind === 'warn' }" v-if="copySuccess" role="status" aria-live="polite">
+    <progress v-if="toastKind === 'loading'" class="loading-spinner" aria-hidden="true"></progress>
+    <svg v-else-if="toastKind === 'warn'" class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-alert-triangle"/></svg>
+    <svg v-else class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-check-circle"/></svg>
+    <span v-if="copyTarget === 'wechat'">已复制，可粘贴到公众号</span>
+    <span v-else-if="copyTarget === 'save'">已保存</span>
+    <span v-else-if="copyTarget === 'export' || copyTarget === 'export-html'">已导出 HTML</span>
+    <span v-else-if="copyTarget === 'export-md'">已导出 Markdown</span>
+    <span v-else-if="copyTarget === 'export-pdf'">已打开 PDF 打印窗口</span>
+    <span v-else-if="copyTarget === 'export-image'">已导出长图 PNG</span>
+    <span v-else-if="copyTarget === 'export-xhs-one'">已导出知识卡片 PNG</span>
+    <span v-else-if="copyTarget === 'export-xhs-zip'">已打包导出小红书卡片 ZIP</span>
+    <span v-else-if="copyTarget === 'exporting-xhs'">正在渲染高清知识卡片...</span>
+    <span v-else-if="copyTarget === 'export-docx'">已导出 Word 文档</span>
+    <span v-else-if="copyTarget === 'export-backup'">已导出数据备份</span>
+    <span v-else-if="copyTarget === 'exporting-image'">正在生成长图...</span>
+    <span v-else-if="copyTarget === 'loading-lib'">正在加载导出引擎...</span>
+    <span v-else-if="copyTarget === 'image'">图片已插入</span>
+    <span v-else-if="copyTarget === 'image-local-fallback'">云图床未就绪或上传失败，已存入 IndexedDB 本地图库</span>
+    <span v-else-if="copyTarget === 'media-pruned'">已清理未使用的本地图片</span>
+    <span v-else-if="copyTarget === 'storage-full'">本地存储空间已满，建议清理旧历史或改用图床</span>
+    <span v-else-if="copyTarget === 'uploading'">正在上传到图床...</span>
+    <span v-else-if="copyTarget === 'injected'">已载入外部草稿（本标签页独立保存）</span>
+    <span v-else-if="copyTarget === 'humanize-clean'">已本地清理 AI 客服开场/结尾残余</span>
+    <span v-else-if="copyTarget === 'humanize-applied'">已应用去 AI 味改写（可随时撤销）</span>
+    <span v-else-if="copyTarget === 'zhuque-copied'">已复制纯正文，正在打开腾讯朱雀（粘贴即可测 AI 率）</span>
+    <span v-else-if="copyTarget === 'doc-created'">已新建空白文稿</span>
+    <span v-else>已复制</span>
   </div>
 
   <!-- ─── 头部 ─── -->
@@ -84,11 +388,7 @@
     <div class="header-left">
       <a class="logo" href="#">
         <div class="logo-icon">
-          <svg viewBox="0 0 24 24" fill="white" width="16" height="16">
-            <path d="M3 21c0 0 2-2 4-2s2.5 1 4.5 1 3-1.5 4.5-1.5 2 .5 2 .5"/>
-            <path d="M12 3c-.5 2-1 3.5-1 5 0 2 1.5 3 1.5 5s-1 3.5-1 5" stroke="white" fill="none" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="12" cy="5" r="1.2" fill="white"/>
-          </svg>
+          <svg class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-logo-nib"/></svg>
         </div>
         <span>MoPai 墨排</span>
         <span class="logo-version">V3</span>
@@ -97,55 +397,57 @@
     <div class="header-right">
       <!-- AI 助手 -->
       <button class="header-btn has-label" :class="{ active: showAiPanel }" @click="toggleAiPanel" title="AI 助手">
-        <span>🤖</span>
+        <svg class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-sparkles"/></svg>
         <span class="btn-label">AI</span>
       </button>
       <!-- 图床管理 -->
-      <button class="header-btn has-label" :class="{ active: showImageManager }" @click="toggleImageManager" title="图床管理">
-        <span>🖼️</span>
+      <button class="header-btn has-label" :class="{ active: showImageManager }" @click="toggleImageManager" title="图床与本地图库">
+        <svg class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-images"/></svg>
         <span class="btn-label">图床</span>
       </button>
       <!-- 发布助手 -->
       <button class="header-btn has-label" :class="{ active: showPublish }" @click="togglePublish" title="发布到多平台">
-        <span>🚀</span>
+        <svg class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-send"/></svg>
         <span class="btn-label">发布</span>
       </button>
       <!-- 大纲目录 -->
       <button class="header-btn has-label" :class="{ active: showToc }" @click="toggleToc" title="大纲目录">
-        <span>📑</span>
+        <svg class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-list-tree"/></svg>
         <span class="btn-label">目录</span>
       </button>
       <!-- 手机预览 -->
-      <button class="header-btn has-label" :class="{ active: mobilePreview }" @click="toggleMobilePreview" title="手机预览模式">
-        <span>📱</span>
+      <button class="header-btn has-label mobile-hide-btn" :class="{ active: mobilePreview }" @click="toggleMobilePreview" title="手机预览模式">
+        <svg class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-smartphone"/></svg>
         <span class="btn-label">手机</span>
       </button>
       <!-- 暗色模式 -->
-      <button class="header-btn has-label" @click="toggleDarkMode" :title="darkMode ? '亮色模式' : '暗色模式'">
-        <span>{{ darkMode ? '☀️' : '🌙' }}</span>
+      <button class="header-btn has-label" :class="{ active: darkMode }" @click="toggleDarkMode" :title="darkMode ? '切换亮色模式' : '切换暗色模式'">
+        <svg v-if="darkMode" class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-sun"/></svg>
+        <svg v-else class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-moon"/></svg>
         <span class="btn-label">主题</span>
       </button>
       <!-- 专注模式 -->
-      <button class="header-btn has-label" :class="{ active: focusMode }" @click="focusMode = !focusMode" title="专注模式 ⌘\\">
-        <span>{{ focusMode ? '⬜' : '◻️' }}</span>
+      <button class="header-btn has-label mobile-hide-btn" :class="{ active: focusMode }" @click="focusMode = !focusMode" title="专注模式 ⌘\\">
+        <svg v-if="focusMode" class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-minimize"/></svg>
+        <svg v-else class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-maximize"/></svg>
         <span class="btn-label">专注</span>
       </button>
       <!-- 设置 -->
-      <button class="header-btn has-label" :class="{ active: showSettings }" @click="toggleSettings" title="样式设置">
-        <span>⚙️</span>
+      <button class="header-btn has-label" :class="{ active: showSettings }" @click="toggleSettings" title="样式与服务设置">
+        <svg class="ui-icon" width="17" height="17" aria-hidden="true"><use href="#mp-i-settings"/></svg>
         <span class="btn-label">设置</span>
       </button>
     </div>
   </header>
 
   <!-- ─── 样式选择栏（带悬浮预览） ─── -->
-  <div class="theme-bar">
+  <div class="theme-bar" @scroll="onThemeLeave">
     <span class="theme-label">主题</span>
     <div
       class="theme-btn-wrapper"
       v-for="t in themeList"
       :key="t.key"
-      @mouseenter="onThemeHover(t.key)"
+      @mouseenter="onThemeHover(t.key, $event)"
       @mouseleave="onThemeLeave"
     >
       <button
@@ -154,21 +456,31 @@
         @click="selectTheme(t.key)"
         :title="t.desc"
       >
-        <span class="emoji">{{ t.emoji }}</span>
-        {{ t.name }}
+        <span class="theme-icon" aria-hidden="true" :style="currentTheme === t.key ? null : { color: t.accent }" v-html="t.icon"></span>
+        <span>{{ t.name }}</span>
       </button>
-      <!-- 主题悬浮预览 -->
-      <div class="theme-preview-tooltip" v-if="hoveredTheme === t.key && hoveredTheme !== currentTheme">
-        <div class="theme-preview-content" v-html="themePreviewHtml"></div>
-      </div>
     </div>
+  </div>
+  <!-- 独立 fixed 主题悬浮预览层，彻底摆脱 .theme-bar overflow-x: auto 裁切 -->
+  <div
+    class="theme-preview-tooltip"
+    v-if="hoveredTheme && hoveredTheme !== currentTheme && themePreviewHtml"
+    :style="themeTooltipStyle"
+    role="tooltip"
+  >
+    <div class="theme-preview-content" v-html="themePreviewHtml"></div>
   </div>
 
   <!-- ─── TOC 大纲面板 ─── -->
   <div class="toc-panel" v-if="showToc">
     <div class="toc-header">
-      <span>📑 大纲目录</span>
-      <button class="close-btn" @click="toggleToc" style="width:24px;height:24px;font-size:13px;">✕</button>
+      <span class="title-with-icon">
+        <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-list-tree"/></svg>
+        大纲目录
+      </span>
+      <button class="close-btn" @click="toggleToc" aria-label="关闭大纲目录" style="width:24px;height:24px;">
+        <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-x"/></svg>
+      </button>
     </div>
     <div class="toc-list">
       <div v-if="tocList.length === 0" class="history-empty" style="padding:20px;">
@@ -179,7 +491,7 @@
         :class="'level-' + item.level"
         v-for="(item, idx) in tocList"
         :key="idx"
-        @click="scrollToHeading(item.line)"
+        @click="scrollToHeading(item.line, idx)"
       >
         {{ item.text }}
       </button>
@@ -188,8 +500,14 @@
 
   <!-- 手机端 Tab 切换栏（仅小屏显示） -->
   <div class="mobile-tab-bar">
-    <button class="mobile-tab" :class="{ active: mobileTab === 'editor' }" @click="mobileTab = 'editor'">✏️ 编辑</button>
-    <button class="mobile-tab" :class="{ active: mobileTab === 'preview' }" @click="mobileTab = 'preview'">👁️ 预览</button>
+    <button class="mobile-tab" :class="{ active: mobileTab === 'editor' }" @click="mobileTab = 'editor'">
+      <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-pen"/></svg>
+      编辑
+    </button>
+    <button class="mobile-tab" :class="{ active: mobileTab === 'preview' }" @click="mobileTab = 'preview'">
+      <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-eye"/></svg>
+      预览
+    </button>
   </div>
 
   <!-- ─── 主体 ─── -->
@@ -197,16 +515,29 @@
     <!-- 左：编辑器 -->
     <div class="editor-panel" :class="{ 'mobile-active': mobileTab === 'editor' }">
       <div class="editor-header">
-        <span class="editor-title">Markdown 编辑</span>
+        <button type="button" class="doc-switcher-btn" @click="openDocsModal" :title="'切换或管理多篇本地草稿（当前：' + currentDocTitle + '）'">
+          <svg class="ui-icon ui-icon-primary" width="13" height="13" aria-hidden="true"><use href="#mp-i-folder"/></svg>
+          <span class="doc-switcher-title">{{ currentDocTitle }}</span>
+          <span v-if="docsList.length" class="doc-count-badge">{{ docsList.length }}</span>
+          <svg class="ui-icon chevron-icon" width="11" height="11" aria-hidden="true"><use href="#mp-i-chevron-down"/></svg>
+        </button>
         <div class="editor-actions">
-          <button class="editor-action-btn" @click="showTemplates = true" title="模板库">📋 模板</button>
+          <button class="editor-action-btn" :class="{ active: showAiPanel && aiPanelTab === 'humanize' }" @click="openHumanizer" :title="'本地 AI 味体检（当前 ' + docHumanizeReport.score + ' 分 · ' + docHumanizeReport.levelLabel + '）'">
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-wand"/></svg>
+            去AI味
+            <span class="ai-risk-dot" :class="'is-' + docHumanizeReport.level" aria-hidden="true"></span>
+          </button>
+          <button class="editor-action-btn" @click="showTemplates = true" title="模板库">
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-layout-grid"/></svg>
+            模板
+          </button>
           <label class="editor-action-btn" title="上传 .md 文件">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-upload"/></svg>
             上传
             <input type="file" accept=".md,.markdown" class="file-input-hidden" @change="handleFileUpload">
           </label>
           <button class="editor-action-btn danger" @click="clearEditor" title="清空">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-trash"/></svg>
             清空
           </button>
         </div>
@@ -214,46 +545,62 @@
 
       <!-- 格式化工具栏 -->
       <div class="format-toolbar">
-        <button class="format-btn" @click="insertFormat('bold')" title="加粗 ⌘B"><b>B</b></button>
-        <button class="format-btn" @click="insertFormat('italic')" title="斜体 ⌘I"><i>I</i></button>
-        <button class="format-btn" @click="insertFormat('strike')" title="删除线"><s>S</s></button>
-        <button class="format-btn" @click="insertFormat('code')" title="行内代码">&lt;&gt;</button>
-        <div class="format-divider"></div>
-        <button class="format-btn" @click="insertFormat('h1')" title="一级标题" style="font-size:15px;font-weight:800;">H₁</button>
-        <button class="format-btn" @click="insertFormat('h2')" title="二级标题" style="font-size:14px;font-weight:700;">H₂</button>
-        <button class="format-btn" @click="insertFormat('h3')" title="三级标题" style="font-size:13px;font-weight:600;">H₃</button>
-        <div class="format-divider"></div>
-        <button class="format-btn" @click="insertFormat('quote')" title="引用">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+        <button class="format-btn" @click="insertFormat('bold')" title="加粗 ⌘B" aria-label="加粗"><b>B</b></button>
+        <button class="format-btn" @click="insertFormat('italic')" title="斜体 ⌘I" aria-label="斜体"><i>I</i></button>
+        <button class="format-btn" @click="insertFormat('strike')" title="删除线" aria-label="删除线"><s>S</s></button>
+        <button class="format-btn" @click="insertFormat('code')" title="行内代码" aria-label="行内代码">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-code"/></svg>
         </button>
-        <button class="format-btn" @click="insertFormat('link')" title="链接 ⌘K">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg>
+        <div class="format-divider"></div>
+        <button class="format-btn" @click="insertFormat('h1')" title="一级标题" aria-label="一级标题" style="font-size:15px;font-weight:800;">H₁</button>
+        <button class="format-btn" @click="insertFormat('h2')" title="二级标题" aria-label="二级标题" style="font-size:14px;font-weight:700;">H₂</button>
+        <button class="format-btn" @click="insertFormat('h3')" title="三级标题" aria-label="三级标题" style="font-size:13px;font-weight:600;">H₃</button>
+        <div class="format-divider"></div>
+        <button class="format-btn" @click="insertFormat('quote')" title="引用" aria-label="引用">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-quote"/></svg>
+        </button>
+        <button class="format-btn" @click="insertFormat('link')" title="链接 ⌘K" aria-label="链接">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-link"/></svg>
         </button>
         <div class="format-btn-wrapper">
-          <button class="format-btn" @click="insertFormat('image')" title="图片（或直接粘贴/拖拽图片）">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>
+          <button class="format-btn" @click="insertFormat('image')" title="图片（或直接粘贴/拖拽图片）" aria-label="插入图片">
+            <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-images"/></svg>
           </button>
-          <button class="format-btn" @click="toggleImageGuide" title="图片使用说明" style="font-size:10px;width:18px;padding:0;color:var(--text-muted);">
-            ▾
+          <button class="format-btn" @click="toggleImageGuide" title="图片使用说明" aria-label="图片使用说明" style="width:18px;padding:0;color:var(--text-muted);">
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-chevron-down"/></svg>
           </button>
           <!-- 图床使用说明弹窗 -->
           <div class="image-guide-popup" v-if="showImageGuide">
             <div class="image-guide-header">
-              <span>🖼️ 图片使用指南</span>
-              <button class="close-btn" @click="toggleImageGuide" style="width:22px;height:22px;font-size:11px;">✕</button>
+              <span class="title-with-icon">
+                <svg class="ui-icon ui-icon-primary" width="15" height="15" aria-hidden="true"><use href="#mp-i-images"/></svg>
+                图片使用指南
+              </span>
+              <button class="close-btn" @click="toggleImageGuide" aria-label="关闭图片使用指南" style="width:22px;height:22px;">
+                <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-x"/></svg>
+              </button>
             </div>
             <div class="image-guide-content">
               <div class="guide-item">
-                <div class="guide-item-title">📋 粘贴图片</div>
+                <div class="guide-item-title">
+                  <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-copy"/></svg>
+                  粘贴图片
+                </div>
                 <div class="guide-item-desc">截图后直接 <span class="shortcut-key">⌘V</span> 粘贴</div>
               </div>
               <div class="guide-item">
-                <div class="guide-item-title">📂 拖拽上传</div>
+                <div class="guide-item-title">
+                  <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-upload"/></svg>
+                  拖拽上传
+                </div>
                 <div class="guide-item-desc">将图片文件拖入编辑区域</div>
               </div>
               <div class="guide-divider"></div>
               <div class="guide-item">
-                <div class="guide-item-title">🌐 图床推荐（微信必备）</div>
+                <div class="guide-item-title">
+                  <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-globe"/></svg>
+                  图床推荐（微信必备）
+                </div>
                 <div class="guide-item-desc">粘贴/拖拽的图片为 Base64 格式，微信公众号<strong>可能不支持</strong>。建议使用图床上传图片获取外链：</div>
               </div>
               <div class="guide-item guide-link-item">
@@ -270,60 +617,104 @@
               </div>
               <div class="guide-divider"></div>
               <div class="guide-item">
-                <div class="guide-item-title">✍️ Markdown 图片语法</div>
+                <div class="guide-item-title">
+                  <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-code"/></svg>
+                  Markdown 图片语法
+                </div>
                 <div class="guide-item-desc" style="font-family:monospace;font-size:11px;background:var(--bg);padding:6px 8px;border-radius:4px;margin-top:4px;">![描述](https://图片链接)</div>
               </div>
             </div>
           </div>
         </div>
         <div class="format-divider"></div>
-        <button class="format-btn" @click="insertFormat('ul')" title="无序列表">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+        <button class="format-btn" @click="insertFormat('ul')" title="无序列表" aria-label="无序列表">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-list"/></svg>
         </button>
-        <button class="format-btn" @click="insertFormat('ol')" title="有序列表">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a1 1 0 011 1v1h8V4a1 1 0 112 0v1h1a1 1 0 110 2h-1v2h1a1 1 0 110 2h-1v2h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-2H3a1 1 0 110-2h1V7H3a1 1 0 010-2h1V4a1 1 0 011-1z"/></svg>
+        <button class="format-btn" @click="insertFormat('ol')" title="有序列表" aria-label="有序列表">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-list-ordered"/></svg>
         </button>
-        <button class="format-btn" @click="insertFormat('table')" title="表格">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM4 8v2h5V8H4z" clip-rule="evenodd"/></svg>
+        <button class="format-btn" @click="insertFormat('table')" title="表格" aria-label="插入表格">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-table"/></svg>
         </button>
         <div class="format-divider"></div>
-        <button class="format-btn" @click="insertFormat('codeblock')" title="代码块">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        <button class="format-btn" @click="insertFormat('codeblock')" title="代码块" aria-label="代码块">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-code-xml"/></svg>
         </button>
-        <button class="format-btn" @click="insertFormat('hr')" title="分割线">—</button>
-        <button class="format-btn" @click="insertFormat('info')" title="信息卡片" style="font-size:14px;">💡</button>
-        <button class="format-btn" @click="insertFormat('mermaid')" title="Mermaid 流程图" style="font-size:13px;">🔀</button>
+        <button class="format-btn" @click="insertFormat('hr')" title="分割线" aria-label="分割线">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-minus"/></svg>
+        </button>
+        <button class="format-btn" @click="insertFormat('info')" title="信息卡片" aria-label="信息卡片">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-info"/></svg>
+        </button>
+        <button class="format-btn" @click="insertFormat('mermaid')" title="Mermaid 流程图" aria-label="Mermaid 流程图">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-workflow"/></svg>
+        </button>
       </div>
 
       <!-- 查找替换栏 -->
       <div class="find-replace-bar" v-if="showFindReplace">
         <div style="display:flex;gap:6px;align-items:center;flex:1;">
-          <input class="find-input" type="text" v-model="findText" @input="findInEditor" placeholder="查找..." style="flex:1;">
-          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">{{ findCount }} 处</span>
+          <input class="find-input" type="text" v-model="findText" @input="findInEditor" @keydown.enter="onFindEnter($event)" placeholder="查找（Enter 下一个）..." style="flex:1;">
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">{{ findCount ? (findIndex + 1) + '/' + findCount : '0 处' }}</span>
+          <button class="btn" style="padding:4px 6px;" @click="findPrev" title="上一处" aria-label="上一处">
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-chevron-up"/></svg>
+          </button>
+          <button class="btn" style="padding:4px 6px;" @click="findNext" title="下一处" aria-label="下一处">
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-chevron-down"/></svg>
+          </button>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex:1;">
           <input type="text" v-model="replaceText" placeholder="替换为..." style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:12px;">
           <button class="btn" style="font-size:11px;padding:3px 8px;" @click="replaceOne">替换</button>
           <button class="btn" style="font-size:11px;padding:3px 8px;" @click="replaceAll">全部</button>
-          <button class="close-btn" @click="showFindReplace = false" style="width:20px;height:20px;font-size:10px;">✕</button>
+          <button class="close-btn" @click="showFindReplace = false" aria-label="关闭查找替换" style="width:22px;height:22px;">
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-x"/></svg>
+          </button>
         </div>
       </div>
 
-      <!-- 编辑器区域（带行号） -->
+      <!-- 编辑器区域（带行号 + 划词悬浮快捷条） -->
       <div class="editor-textarea-wrapper">
+        <div
+          v-if="selectionBar.visible"
+          class="selection-float-bar"
+          role="toolbar"
+          aria-label="划词快捷操作"
+          :style="{ top: selectionBar.top + 'px', left: selectionBar.left + 'px' }"
+          @mousedown.prevent
+        >
+          <button type="button" class="selection-float-btn" @click="applyFloatFormat('bold')" title="加粗 ⌘B" aria-label="加粗"><b>B</b></button>
+          <button type="button" class="selection-float-btn" @click="applyFloatFormat('italic')" title="斜体 ⌘I" aria-label="斜体"><i>I</i></button>
+          <button type="button" class="selection-float-btn" @click="applyFloatFormat('code')" title="行内代码" aria-label="行内代码">
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-code"/></svg>
+          </button>
+          <button type="button" class="selection-float-btn" @click="applyFloatFormat('link')" title="链接 ⌘K" aria-label="链接">
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-link"/></svg>
+          </button>
+          <span class="selection-float-sep" aria-hidden="true"></span>
+          <button type="button" class="selection-float-btn is-accent" @click="humanizeFromSelectionBar" title="仅对选中段落去 AI 味">
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-wand"/></svg>
+            <span>去AI味</span>
+          </button>
+        </div>
         <div class="line-numbers" v-if="showLineNumbers">
           <div class="line-number" v-for="n in lineNumbers" :key="n">{{ n }}</div>
         </div>
         <textarea
           class="editor-textarea"
-          :class="{ 'has-line-numbers': showLineNumbers }"
+          :class="{ 'has-line-numbers': showLineNumbers, 'drag-over': isDragging }"
           v-model="markdownText"
           @scroll="syncScroll"
           @keydown="handleTab"
+          @select="captureEditorSelection($event)"
+          @mouseup="captureEditorSelection($event)"
+          @keyup="captureEditorSelection($event)"
+          @blur="hideSelectionBar"
           @paste="handlePaste"
           @drop="handleDrop"
           @dragover="handleDragOver"
-          placeholder="在此输入 Markdown 内容...&#10;&#10;💡 可直接粘贴或拖拽图片&#10;⌨️ 快捷键: ⌘B 加粗 | ⌘I 斜体 | ⌘K 链接 | ⌘S 保存 | ⌘⇧C 复制到公众号"
+          @dragleave="handleDragLeave"
+          placeholder="在此输入 Markdown 内容...&#10;&#10;提示：可直接粘贴或拖拽图片&#10;快捷键：⌘B 加粗 · ⌘I 斜体 · ⌘K 链接 · ⌘S 保存 · ⌘⇧C 复制到公众号"
           spellcheck="false"
         ></textarea>
       </div>
@@ -333,9 +724,13 @@
         <div class="stats">
           <span>{{ charCount }} 字符</span>
           <span>{{ wordCount }} 词</span>
-          <span>📖 {{ readingTime }}</span>
+          <span>
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-book-open"/></svg>
+            {{ readingTime }}
+          </span>
           <span v-if="wordGoal > 0" :style="{ color: wordGoalProgress >= 100 ? '#10b981' : 'var(--text-muted)' }">
-            🎯 {{ wordGoalProgress }}%
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-target"/></svg>
+            {{ wordGoalProgress }}%
           </span>
         </div>
       </div>
@@ -348,35 +743,62 @@
     <!-- 右：预览 -->
     <div class="preview-panel" :class="{ 'mobile-active': mobileTab === 'preview' }">
       <div class="preview-header">
-        <span class="preview-title">
+        <span class="preview-title inline-with-icon">
           预览
-          <span v-if="mobilePreview" style="font-size:10px;color:var(--text-muted);margin-left:6px;">📱 375px</span>
+          <span v-if="mobilePreview" class="inline-with-icon" style="font-size:10.5px;color:var(--text-muted);margin-left:4px;font-weight:500;">
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-smartphone"/></svg>
+            375px
+          </span>
         </span>
         <div class="preview-actions">
-          <button class="btn" @click="toggleHistory" title="历史记录">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+          <button class="btn desktop-only-btn" @click="toggleHistory" title="历史记录">
+            <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-history"/></svg>
             历史
           </button>
-          <button class="btn" @click="saveToHistory" title="保存 ⌘S">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z"/></svg>
+          <button class="btn desktop-only-btn" @click="saveToHistory" title="保存 ⌘S">
+            <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-save"/></svg>
             保存
           </button>
           <div class="export-dropdown-wrapper">
             <button class="btn" @click="showExportMenu = !showExportMenu" title="导出">
-              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-              导出 ▾
+              <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-download"/></svg>
+              导出
+              <svg class="ui-icon chevron-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-chevron-down"/></svg>
             </button>
             <div class="export-dropdown" v-if="showExportMenu">
-              <button @click="exportHtml(); showExportMenu = false;">📄 导出 HTML</button>
-              <button @click="exportPdf(); showExportMenu = false;">📑 导出 PDF</button>
-              <button @click="exportImage(); showExportMenu = false;">🖼️ 导出长图</button>
-              <button @click="exportDocx(); showExportMenu = false;">📝 导出 Word（实验）</button>
+              <button @click="exportMarkdown(); showExportMenu = false;">
+                <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-file-text"/></svg>
+                导出 Markdown (.md)
+              </button>
+              <button @click="exportHtml(); showExportMenu = false;">
+                <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-file-code"/></svg>
+                导出 HTML
+              </button>
+              <button @click="exportPdf(); showExportMenu = false;">
+                <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-printer"/></svg>
+                导出 PDF
+              </button>
+              <button @click="exportImage(); showExportMenu = false;">
+                <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-images"/></svg>
+                导出长图
+              </button>
+              <button @click="openXhsStudio(); showExportMenu = false;">
+                <svg class="ui-icon ui-icon-rose" width="15" height="15" aria-hidden="true"><use href="#mp-i-layers"/></svg>
+                小红书知识卡片 (3:4)
+              </button>
+              <button @click="exportDocx(); showExportMenu = false;">
+                <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-file-pen"/></svg>
+                导出 Word（实验）
+              </button>
               <hr style="margin: 4px 0; border: none; border-top: 1px solid var(--border);">
-              <button @click="syncToMultiPlatform(); showExportMenu = false;">🚀 分发到多平台</button>
+              <button @click="syncToMultiPlatform(); showExportMenu = false;">
+                <svg class="ui-icon ui-icon-primary" width="15" height="15" aria-hidden="true"><use href="#mp-i-send"/></svg>
+                分发到多平台
+              </button>
             </div>
           </div>
-          <button class="btn btn-primary" @click="copyToClipboard('wechat')" title="复制到公众号 ⌘⇧C">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg>
+          <button class="btn btn-primary desktop-only-btn" @click="copyToClipboard('wechat')" title="复制到公众号 ⌘⇧C">
+            <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-copy"/></svg>
             复制到公众号
           </button>
         </div>
@@ -384,6 +806,9 @@
       <article
         class="preview-body"
         :class="{ 'mobile-preview': mobilePreview }"
+        :data-preview-scheme="currentThemeIsDark ? 'dark' : 'light'"
+        :data-code-theme="currentCodeTheme"
+        :style="{ '--preview-bg': currentThemeBg }"
         id="preview-content"
         itemprop="articleBody"
         v-html="renderedHtml"
@@ -392,42 +817,69 @@
 
     <!-- 设置面板 -->
     <div class="settings-panel" v-if="showSettings">
+      <div class="settings-mobile-header">
+        <span class="title-with-icon">
+          <svg class="ui-icon ui-icon-primary" width="16" height="16" aria-hidden="true"><use href="#mp-i-settings"/></svg>
+          样式与服务设置
+        </span>
+        <button class="close-btn" @click="showSettings = false" aria-label="关闭设置面板">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-x"/></svg>
+        </button>
+      </div>
       <!-- 功能开关 -->
       <div class="settings-section">
-        <div class="settings-section-title">⚙️ 功能</div>
+        <div class="settings-section-title">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-sliders"/></svg>
+          功能
+        </div>
         <div class="toggle-row">
           <div>
-            <div class="toggle-row-label">🔗 微信链接转脚注</div>
+            <div class="toggle-row-label">
+              <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-link"/></svg>
+              微信链接转脚注
+            </div>
             <div class="toggle-row-desc">自动将链接转为文末引用</div>
           </div>
-          <button class="toggle-switch" :class="{ active: wechatFootnote }" @click="toggleFootnote"></button>
+          <button class="toggle-switch" :class="{ active: wechatFootnote }" @click="toggleFootnote" aria-label="开关微信链接转脚注"></button>
         </div>
         <div class="toggle-row">
           <div>
-            <div class="toggle-row-label">💻 Mac 代码块</div>
+            <div class="toggle-row-label">
+              <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-terminal"/></svg>
+              Mac 代码块
+            </div>
             <div class="toggle-row-desc">三色圆点窗口样式</div>
           </div>
-          <button class="toggle-switch" :class="{ active: macCodeBlock }" @click="macCodeBlock = !macCodeBlock"></button>
+          <button class="toggle-switch" :class="{ active: macCodeBlock }" @click="macCodeBlock = !macCodeBlock" aria-label="开关 Mac 代码块"></button>
         </div>
         <div class="toggle-row">
           <div>
-            <div class="toggle-row-label">🖼️ SM.MS 图床</div>
-            <div class="toggle-row-desc">粘贴图片自动上传获取永久链接</div>
+            <div class="toggle-row-label">
+              <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-images"/></svg>
+              图片存储引擎
+            </div>
+            <div class="toggle-row-desc">当前：{{ mediaProviderLabel }}（支持多图床 + IndexedDB）</div>
           </div>
-          <button class="toggle-switch" :class="{ active: useImageHost }" @click="toggleImageHost"></button>
+          <button class="btn" style="font-size:11px;padding:3px 9px;" @click="openMediaManager('config')">配置</button>
         </div>
         <div class="toggle-row">
           <div>
-            <div class="toggle-row-label">🔢 编辑器行号</div>
+            <div class="toggle-row-label">
+              <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-hash"/></svg>
+              编辑器行号
+            </div>
             <div class="toggle-row-desc">左侧显示行号</div>
           </div>
-          <button class="toggle-switch" :class="{ active: showLineNumbers }" @click="toggleLineNumbers"></button>
+          <button class="toggle-switch" :class="{ active: showLineNumbers }" @click="toggleLineNumbers" aria-label="开关编辑器行号"></button>
         </div>
       </div>
 
       <!-- AI 服务 -->
       <div class="settings-section">
-        <div class="settings-section-title">🤖 AI 服务（可选）</div>
+        <div class="settings-section-title">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-sparkles"/></svg>
+          AI 服务（可选）
+        </div>
         <div class="toggle-row-desc" style="margin-bottom:8px;">配置后可用 AI 助手。Key 只保存在本机浏览器，不会上传到任何服务器。</div>
         <select :value="aiConfig.provider" @change="setAiProvider($event.target.value)" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
           <option v-for="p in aiProviderList" :key="p.id" :value="p.id">{{ p.name }}{{ p.proxy ? '（国内需代理）' : '' }}</option>
@@ -435,28 +887,47 @@
         <input v-if="aiProviderInfo.customBase" type="text" :value="aiBaseUrl" @input="setAiBaseUrl($event.target.value)" placeholder="API Base URL（如 https://api.example.com/v1）" style="width:100%;margin-top:8px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
         <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
           <input type="password" :value="aiKey" @input="setAiKey($event.target.value)" :placeholder="aiProviderInfo.customBase ? 'API Key（本地模型可留空）' : (aiProviderInfo.name + ' API Key')" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
-          <a v-if="aiProviderInfo.keyUrl" :href="aiProviderInfo.keyUrl" target="_blank" style="font-size:11px;color:var(--primary);white-space:nowrap;">获取 Key</a>
+          <a v-if="aiProviderInfo.keyUrl" :href="aiProviderInfo.keyUrl" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--primary);white-space:nowrap;">获取 Key</a>
         </div>
         <input type="text" :value="aiModel" @input="setAiModel($event.target.value)" :placeholder="'模型名，留空用 ' + aiProviderInfo.defaultModel" style="width:100%;margin-top:8px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
-        <button v-if="aiKey" class="btn" style="margin-top:8px;font-size:11px;padding:4px 10px;" @click="setAiKey('')">清除 Key</button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button v-if="aiReady" class="btn" style="font-size:11px;padding:4px 10px;" :disabled="aiTesting" @click="testAiConnection">
+            <progress v-if="aiTesting" class="loading-spinner" style="--size:12px;" aria-hidden="true"></progress>
+            <svg v-else class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-plug"/></svg>
+            {{ aiTesting ? '测试中...' : '测试连接' }}
+          </button>
+          <button v-if="aiKey" class="btn" style="font-size:11px;padding:4px 10px;" @click="setAiKey('')">清除 Key</button>
+        </div>
+        <div v-if="aiTestStatus" class="ai-test-status" :class="aiTestStatus.ok ? 'ok' : 'err'">
+          <svg v-if="aiTestStatus.ok" class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-check-circle"/></svg>
+          <svg v-else class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-x-circle"/></svg>
+          <span>{{ aiTestStatus.msg }}</span>
+        </div>
       </div>
 
       <!-- 字数目标 -->
       <div class="settings-section">
-        <div class="settings-section-title">🎯 字数目标</div>
+        <div class="settings-section-title">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-target"/></svg>
+          字数目标
+        </div>
         <div style="display:flex;gap:8px;align-items:center;">
           <input type="number" :value="wordGoal" @input="setWordGoal($event.target.value)" placeholder="目标字数" min="0" step="100" style="width:100px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;">
           <span style="font-size:12px;color:var(--text-muted);">当前 {{ wordCount }} 字</span>
-          <span v-if="wordGoal > 0" style="font-size:12px;" :style="{ color: wordGoalProgress >= 100 ? '#10b981' : 'var(--text-muted)' }">
-            {{ wordGoalProgress >= 100 ? '🎉 已达标！' : wordGoalProgress + '%' }}
+          <span v-if="wordGoal > 0" class="inline-with-icon" style="font-size:12px;" :style="{ color: wordGoalProgress >= 100 ? '#10b981' : 'var(--text-muted)' }">
+            <svg v-if="wordGoalProgress >= 100" class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-check-circle"/></svg>
+            {{ wordGoalProgress >= 100 ? '已达标！' : wordGoalProgress + '%' }}
           </span>
         </div>
       </div>
 
       <!-- 主题色 -->
       <div class="settings-section">
-        <div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center;">
-          <span>🎨 主题色</span>
+        <div class="settings-section-title" style="justify-content:space-between;">
+          <span class="title-with-icon">
+            <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-palette"/></svg>
+            主题色
+          </span>
           <button v-if="customColor" class="btn" style="font-size:11px;padding:2px 8px;" @click="resetCustomColor">恢复主题默认</button>
         </div>
         <div class="color-grid">
@@ -478,7 +949,10 @@
 
       <!-- 字体 -->
       <div class="settings-section">
-        <div class="settings-section-title">🔤 字体</div>
+        <div class="settings-section-title">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-type"/></svg>
+          字体
+        </div>
         <div class="font-options">
           <div class="font-option" :class="{ active: fontFamily === 'sans' }" @click="setFontFamily('sans')">
             无衬线体
@@ -497,7 +971,10 @@
 
       <!-- 字号 -->
       <div class="settings-section">
-        <div class="settings-section-title">📏 字号</div>
+        <div class="settings-section-title">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-text-size"/></svg>
+          字号
+        </div>
         <div class="size-options">
           <button class="size-btn" :class="{ active: fontSize === 14 }" @click="setFontSize(14)">14</button>
           <button class="size-btn" :class="{ active: fontSize === 15 }" @click="setFontSize(15)">15</button>
@@ -509,7 +986,10 @@
 
       <!-- 快捷键 -->
       <div class="settings-section">
-        <div class="settings-section-title">⌨️ 快捷键</div>
+        <div class="settings-section-title">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-keyboard"/></svg>
+          快捷键
+        </div>
         <div class="shortcut-grid">
           <div class="shortcut-item">加粗 <span class="shortcut-key">⌘B</span></div>
           <div class="shortcut-item">斜体 <span class="shortcut-key">⌘I</span></div>
@@ -524,7 +1004,10 @@
 
       <!-- 自定义 CSS -->
       <div class="settings-section">
-        <div class="settings-section-title">🎨 高级样式</div>
+        <div class="settings-section-title">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-code-xml"/></svg>
+          高级样式
+        </div>
         <div class="toggle-row-desc" style="margin-bottom:6px;">自定义 CSS 仅影响预览区，不影响编辑器</div>
         <textarea
           class="custom-css-editor"
@@ -537,12 +1020,23 @@
 
       <!-- 数据备份 -->
       <div class="settings-section">
-        <div class="settings-section-title">💾 数据备份</div>
-        <div class="toggle-row-desc" style="margin-bottom:8px;">把全部本地数据（草稿、历史、图床记录、设置）导出为一个 JSON 文件；换设备或清缓存前先备份，导入即可还原。<strong>文件包含 API Key，请妥善保管。</strong></div>
+        <div class="settings-section-title">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-database"/></svg>
+          数据备份
+        </div>
+        <div class="toggle-row-desc" style="margin-bottom:8px;">把本地数据（草稿、历史、图床记录、设置）导出为 JSON 文件；换设备或清缓存前先备份，导入即可还原。</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);margin-bottom:8px;cursor:pointer;">
+          <input type="checkbox" v-model="backupIncludeSecrets">
+          <span>包含 API Key / 图床 Token（分享给他人时请勿勾选）</span>
+        </label>
         <div style="display:flex;gap:8px;">
-          <button class="btn" @click="exportBackup">⬇️ 导出备份</button>
+          <button class="btn" @click="exportBackup">
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-download"/></svg>
+            导出备份
+          </button>
           <label class="btn" style="cursor:pointer;">
-            ⬆️ 导入恢复
+            <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-upload"/></svg>
+            导入恢复
             <input type="file" accept="application/json,.json" class="file-input-hidden" @change="importBackup">
           </label>
         </div>
@@ -550,21 +1044,48 @@
     </div>
   </div>
 
+  <!-- 手机端底部快捷操作栏（仅小屏显示，适配拇指热区与底部安全区） -->
+  <nav class="mobile-bottom-bar" aria-label="移动端快捷操作">
+    <button type="button" class="mobile-bottom-btn" @click="toggleHistory">
+      <svg class="ui-icon" width="16" height="16" aria-hidden="true"><use href="#mp-i-history"/></svg>
+      <span>历史</span>
+    </button>
+    <button type="button" class="mobile-bottom-btn" @click="saveToHistory">
+      <svg class="ui-icon" width="16" height="16" aria-hidden="true"><use href="#mp-i-save"/></svg>
+      <span>保存</span>
+    </button>
+    <button type="button" class="mobile-bottom-btn" @click="openXhsStudio">
+      <svg class="ui-icon ui-icon-rose" width="16" height="16" aria-hidden="true"><use href="#mp-i-layers"/></svg>
+      <span>卡片</span>
+    </button>
+    <button type="button" class="btn btn-primary mobile-bottom-primary" @click="copyToClipboard('wechat')">
+      <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-copy"/></svg>
+      <span>复制到公众号</span>
+    </button>
+  </nav>
+
   <!-- 发布助手弹窗 -->
   <div class="modal-overlay" v-if="showPublish" @click.self="togglePublish">
     <div class="modal" style="width:580px;">
       <div class="modal-header">
-        <h3>🚀 智能发布助手</h3>
-        <button class="close-btn" @click="togglePublish">✕</button>
+        <h3>
+          <svg class="ui-icon ui-icon-primary" width="17" height="17" aria-hidden="true"><use href="#mp-i-send"/></svg>
+          智能发布助手
+        </h3>
+        <button class="close-btn" @click="togglePublish" aria-label="关闭发布助手">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-x"/></svg>
+        </button>
       </div>
       <div style="padding:14px 18px; max-height:65vh; overflow-y:auto;">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
-          💡 点击平台卡片 → 自动复制优化格式的内容 → 打开平台编辑器 → 直接粘贴发布
+        <div class="publish-tip">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-info"/></svg>
+          <span>点击平台卡片 → 自动复制优化格式的内容 → 打开平台编辑器 → 直接粘贴发布</span>
         </div>
 
         <!-- 状态栏 -->
         <div v-if="publishStatus" class="publish-status">
-          {{ publishStatus }}
+          <svg class="ui-icon ui-icon-primary" width="14" height="14" aria-hidden="true"><use href="#mp-i-info"/></svg>
+          <span>{{ publishStatus }}</span>
         </div>
         
         <!-- 平台卡片网格 -->
@@ -575,7 +1096,7 @@
             :key="p.key"
             @click="publishTo(p)"
           >
-            <div class="publish-card-icon" :style="{ background: p.color + '18', color: p.color }" v-html="p.icon"></div>
+            <div class="publish-card-icon" aria-hidden="true" :style="{ background: p.color + '18', color: p.color }" v-html="p.icon"></div>
             <div class="publish-card-info">
               <div class="publish-card-name">{{ p.name }}</div>
               <div class="publish-card-desc">{{ p.desc }}</div>
@@ -593,8 +1114,13 @@
   <div class="modal-overlay" v-if="showHistory" @click.self="toggleHistory">
     <div class="modal">
       <div class="modal-header">
-        <h3>📋 历史记录</h3>
-        <button class="close-btn" @click="toggleHistory">✕</button>
+        <h3>
+          <svg class="ui-icon ui-icon-primary" width="17" height="17" aria-hidden="true"><use href="#mp-i-history"/></svg>
+          历史记录
+        </h3>
+        <button class="close-btn" @click="toggleHistory" aria-label="关闭历史记录">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-x"/></svg>
+        </button>
       </div>
       <div class="history-list">
         <div v-if="historyList.length === 0" class="history-empty">
@@ -605,71 +1131,606 @@
             <div class="history-item-time">{{ item.time }}</div>
             <div class="history-item-preview">{{ item.preview }}</div>
           </div>
-          <button class="history-item-delete" @click.stop="deleteHistory(item.id)" title="删除">
-            <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          <button class="history-item-delete" @click.stop="deleteHistory(item.id)" title="删除" aria-label="删除此历史记录">
+            <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-trash"/></svg>
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- AI 助手面板 -->
-  <div class="ai-panel" v-if="showAiPanel">
+  <!-- AI 助手面板（对话排版 + 去 AI 味体检与改写） -->
+  <div class="ai-panel" :class="{ 'is-humanize': aiPanelTab === 'humanize' }" v-if="showAiPanel">
     <div class="ai-panel-head">
-      <span>🤖 AI 助手</span>
-      <button class="close-btn" @click="showAiPanel = false">✕</button>
+      <div class="ai-panel-tabs" role="tablist" aria-label="AI 助手模式">
+        <button type="button" class="ai-panel-tab" role="tab" id="ai-tab-chat" :aria-selected="aiPanelTab === 'chat' ? 'true' : 'false'" @click="aiPanelTab = 'chat'">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-sparkles"/></svg>
+          对话排版
+        </button>
+        <button type="button" class="ai-panel-tab" role="tab" id="ai-tab-humanize" :aria-selected="aiPanelTab === 'humanize' ? 'true' : 'false'" @click="openHumanizer">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-wand"/></svg>
+          去 AI 味
+          <span class="ai-risk-pill" :class="'is-' + docHumanizeReport.level">{{ docHumanizeReport.score }}</span>
+        </button>
+      </div>
+      <div class="ai-head-actions">
+        <button v-if="aiPanelTab === 'chat' && aiMessages.length" class="ai-copy-btn" @click="clearAiMessages" title="清空对话">清空</button>
+        <button class="close-btn" @click="showAiPanel = false" aria-label="关闭 AI 助手">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-x"/></svg>
+        </button>
+      </div>
     </div>
 
-    <div v-if="!aiReady" class="ai-hint">
-      先在 ⚙️ 设置面板配置 AI 服务（API Key 或自定义 Base URL）
-    </div>
+    <!-- Tab 1: 对话排版 -->
+    <template v-if="aiPanelTab === 'chat'">
+      <div v-if="!aiReady" class="ai-hint">
+        先在
+        <span class="inline-icon-badge" aria-hidden="true"><svg class="ui-icon" width="13" height="13"><use href="#mp-i-settings"/></svg></span>
+        设置面板配置 AI 服务（API Key 或自定义 Base URL）
+        <div style="margin-top:10px;">
+          <button type="button" class="btn" @click="openAiSettingsFromPanel">前往配置 AI 服务</button>
+        </div>
+      </div>
 
-    <div v-if="aiReady && !aiMessages.length" class="ai-chips">
-      <button v-for="c in aiChips" :key="c" class="ai-chip" @click="aiSend(c)">{{ c }}</button>
-    </div>
+      <div v-if="aiReady && !aiMessages.length" class="ai-chips">
+        <button v-for="c in aiChips" :key="c" class="ai-chip" @click="aiSend(c)">{{ c }}</button>
+      </div>
 
-    <div class="ai-msgs">
-      <div v-for="(m, i) in aiMessages" :key="i" :class="'ai-msg ai-' + m.role">
-        <div v-if="m.text" class="ai-bubble">{{ m.text }}</div>
-        <div v-for="(op, j) in m.ops" :key="j" class="ai-op">
-          <span class="ai-op-label">{{ op.label }}</span>
-          <button v-if="op.pending" class="ai-op-btn" @click="applyAiOp(op)">应用</button>
-          <button v-else-if="op.before" class="ai-op-btn" @click="undoAiOp(op)">撤销</button>
+      <div class="ai-msgs">
+        <div v-for="(m, i) in aiMessages" :key="i" :class="'ai-msg ai-' + m.role">
+          <div v-if="m.text" class="ai-bubble">
+            <div>{{ m.text }}</div>
+            <div v-if="m.role === 'assistant' && !aiBusy" class="ai-bubble-actions">
+              <button class="ai-copy-btn" @click="copyAiText(m.text)">
+                <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-copy"/></svg>
+                复制
+              </button>
+            </div>
+          </div>
+          <div v-for="(op, j) in m.ops" :key="j" class="ai-op">
+            <svg v-if="op.kind === 'warn'" class="ui-icon ui-icon-warn" width="14" height="14" aria-hidden="true"><use href="#mp-i-alert-triangle"/></svg>
+            <svg v-else-if="op.kind === 'ok'" class="ui-icon ui-icon-success" width="14" height="14" aria-hidden="true"><use href="#mp-i-check-circle"/></svg>
+            <svg v-else-if="op.kind === 'undo'" class="ui-icon ui-icon-muted" width="14" height="14" aria-hidden="true"><use href="#mp-i-rotate-ccw"/></svg>
+            <svg v-else-if="op.kind === 'pending'" class="ui-icon ui-icon-primary" width="14" height="14" aria-hidden="true"><use href="#mp-i-file-pen"/></svg>
+            <svg v-else class="ui-icon ui-icon-muted" width="14" height="14" aria-hidden="true"><use href="#mp-i-sliders"/></svg>
+            <span class="ai-op-label">{{ op.label }}</span>
+            <button v-if="op.pending" class="ai-op-btn" @click="applyAiOp(op)">应用</button>
+            <button v-else-if="op.before" class="ai-op-btn" @click="undoAiOp(op)">撤销</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-input">
+        <textarea v-model="aiInput" :disabled="!aiReady" rows="2"
+                  placeholder="例：换成适合技术文的主题，主色改微信绿"
+                  @keydown.enter="onAiEnter($event)"></textarea>
+        <button class="btn btn-primary" :disabled="!aiReady" @click="aiBusy ? aiStop() : aiSend()">
+          <svg v-if="aiBusy" class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-square"/></svg>
+          <svg v-else class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-send"/></svg>
+          {{ aiBusy ? '停止' : '发送' }}
+        </button>
+      </div>
+    </template>
+
+    <!-- Tab 2: 去 AI 味（本地多维体检 + 病灶驱动改写 + Diff 对比确认） -->
+    <div v-else class="humanize-pane" role="tabpanel" aria-labelledby="ai-tab-humanize">
+      <!-- 1. 本地 AI 味体检仪表盘（离线免 Key） -->
+      <div class="humanize-score-card">
+        <div class="progress-ring-wrapper">
+          <progress
+            class="progress-ring"
+            :value="humanizeReport.score"
+            max="100"
+            :aria-label="'AI 味指数 ' + humanizeReport.score + ' 分'"
+            :aria-valuetext="humanizeReport.score + ' 分，' + humanizeReport.levelLabel"
+            :style="{ '--value': humanizeReport.score, '--fill-color': humanizeScoreColor }"
+          ></progress>
+          <div class="progress-ring-content" aria-hidden="true">
+            <strong :style="{ color: humanizeScoreColor }">{{ humanizeReport.score }}</strong>
+            <span>AI 味</span>
+          </div>
+        </div>
+
+        <div class="humanize-score-meta">
+          <div class="humanize-verdict-row">
+            <span class="humanize-level-tag" :class="'is-' + humanizeReport.level">{{ humanizeReport.levelLabel }}</span>
+            <span class="humanize-issue-count">检出 {{ humanizeReport.issues.length }} 项特征</span>
+          </div>
+          <div class="humanize-metrics">
+            <span>句均 {{ humanizeReport.avgSentenceLen || '—' }} 字</span>
+            <span :title="'句长变异系数（Burstiness CV），自然写作通常 ≥ 0.42'">节奏 CV {{ humanizeReport.burstinessCv ?? '—' }}</span>
+            <span :title="'滑动窗口 MATTR 词汇丰富度'">MATTR {{ humanizeReport.lexicalDiversity ?? '—' }}</span>
+            <span v-if="humanizeReport.frozenCount" :title="'改写时自动冻结保护的数字、时间与外链'">冻结事实 {{ humanizeReport.frozenCount }}</span>
+          </div>
+          <div class="humanize-scope-row">
+            <button type="button" class="humanize-scope-btn" :class="{ active: humanizeScope === 'doc' }" @click="humanizeScope = 'doc'">全文</button>
+            <button type="button" class="humanize-scope-btn" :class="{ active: humanizeScope === 'selection' }" :disabled="editorSelection.text.trim().length < 10" @click="humanizeScope = 'selection'">
+              选中段{{ editorSelection.text.trim().length >= 10 ? ' (' + editorSelection.text.trim().length + '字)' : '' }}
+            </button>
+            <button v-if="humanizeReport.cleanableCount > 0 && humanizeScope === 'doc'" type="button" class="humanize-clean-btn" @click="runQuickCleanLocal" title="纯本地清除 AI 客服开场/结尾残余（免 API）">
+              清理 {{ humanizeReport.cleanableCount }} 处残余
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 腾讯朱雀免 Key 官方实测快捷通道 -->
+      <div class="humanize-zhuque-card">
+        <div class="humanize-zhuque-info">
+          <div class="humanize-zhuque-title">腾讯朱雀官方 AI 率实测（免 Key）</div>
+          <div class="humanize-zhuque-desc">自动剔除 Markdown 标记与代码块，复制 {{ zhuquePlainLength }} 字纯正文并打开朱雀网页版</div>
+        </div>
+        <button type="button" class="btn humanize-zhuque-btn" :disabled="!zhuquePlainLength" @click="openZhuqueDetect">
+          <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-external-link"/></svg>
+          去朱雀实测
+        </button>
+      </div>
+
+      <!-- 2. 维度过滤 + 可点击定位病灶列表 -->
+      <div class="humanize-section">
+        <div class="humanize-section-head">
+          <span>本地体检清单（免 API · 点击跳转定位）</span>
+        </div>
+        <div v-if="humanizeDimensionPills.length > 1" class="humanize-cat-pills">
+          <button type="button" class="humanize-cat-pill" :class="{ active: humanizeActiveCat === 'all' }" @click="humanizeActiveCat = 'all'">
+            全部 ({{ humanizeReport.issues.length }})
+          </button>
+          <button type="button" class="humanize-cat-pill" v-for="d in humanizeDimensionPills" :key="d.id" :class="{ active: humanizeActiveCat === d.id }" @click="humanizeActiveCat = d.id">
+            {{ d.name }} ({{ d.count }})
+          </button>
+        </div>
+
+        <div v-if="humanizeFilteredIssues.length === 0" class="humanize-empty">
+          <svg class="ui-icon ui-icon-success" width="16" height="16" aria-hidden="true"><use href="#mp-i-check-circle"/></svg>
+          <span>未发现明显 AI 模板腔、空泛黑话或结构回声，读起来很自然。</span>
+        </div>
+        <div v-else class="humanize-issue-list">
+          <button
+            type="button"
+            class="humanize-issue-item"
+            v-for="item in humanizeFilteredIssues.slice(0, 20)"
+            :key="item.id"
+            @click="jumpToHumanizeIssue(item)"
+          >
+            <div class="humanize-issue-top">
+              <span class="humanize-sev-dot" :class="'is-' + item.severity" aria-hidden="true"></span>
+              <span class="humanize-issue-label">{{ item.label }}</span>
+              <span class="humanize-issue-line">L{{ item.line + 1 }}</span>
+            </div>
+            <div class="humanize-issue-snippet">{{ item.snippet }}</div>
+            <div class="humanize-issue-tip">{{ item.suggestion }}</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. AI 深度去味改写（将病灶清单注入模型 + 事实与 Markdown 保护） -->
+      <div class="humanize-section">
+        <div class="humanize-section-head">
+          <span>AI 病灶定向改写（保留事实 / 代码 / 链接）</span>
+        </div>
+        <div class="humanize-style-grid">
+          <button
+            type="button"
+            class="humanize-style-btn"
+            v-for="s in humanizeStyleList"
+            :key="s.id"
+            :class="{ active: humanizeStyle === s.id }"
+            @click="setHumanizeStyle(s.id)"
+          >
+            <span class="humanize-style-name">{{ s.name }}</span>
+            <span class="humanize-style-badge">{{ s.badge }}</span>
+          </button>
+        </div>
+        <div class="humanize-style-desc">{{ humanizeStyleInfo.desc }}</div>
+
+        <div class="humanize-intensity-row" role="group" aria-label="改写力度">
+          <button
+            type="button"
+            class="humanize-intensity-btn"
+            v-for="lv in humanizeIntensityList"
+            :key="lv.id"
+            :class="{ active: humanizeIntensity === lv.id }"
+            :title="lv.desc"
+            @click="setHumanizeIntensity(lv.id)"
+          >{{ lv.name }}</button>
+        </div>
+
+        <div v-if="!aiReady" class="humanize-need-key">
+          <span>本地体检永久免费；深度改写需先配置 AI 服务（支持 DeepSeek / 智谱 / 本地 Ollama）。</span>
+          <button type="button" class="btn" style="font-size:11.5px;padding:4px 10px;" @click="openAiSettingsFromPanel">去配置</button>
+        </div>
+        <div v-else class="humanize-run-row">
+          <button type="button" class="btn btn-primary" style="flex:1;justify-content:center;" @click="humanizeBusy ? stopHumanizeRewrite() : runHumanizeRewrite()">
+            <progress v-if="humanizeBusy" class="loading-spinner" style="--size:13px;" aria-hidden="true"></progress>
+            <svg v-else class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-wand"/></svg>
+            {{ humanizeBusy ? '停止改写...' : ('按「' + humanizeStyleInfo.name + '」去 AI 味') }}
+          </button>
+        </div>
+
+        <div v-if="humanizeError" class="ai-test-status err" style="margin-top:8px;">
+          <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-x-circle"/></svg>
+          <span>{{ humanizeError }}</span>
+        </div>
+
+        <!-- 流式生成实时预览 -->
+        <div v-if="humanizeBusy && humanizeStreamText" class="humanize-stream-box">
+          <div class="humanize-stream-head">正在生成「{{ humanizeStyleInfo.name }}」改写预览...</div>
+          <pre class="humanize-stream-pre">{{ humanizeStreamText }}</pre>
+        </div>
+
+        <!-- 改前 / 改后 Diff 对比确认卡片 -->
+        <div v-if="humanizeProposal" class="humanize-proposal-card">
+          <div class="humanize-proposal-head">
+            <span class="inline-with-icon" style="font-weight:600;">
+              <svg class="ui-icon ui-icon-primary" width="14" height="14" aria-hidden="true"><use href="#mp-i-diff"/></svg>
+              改写对比（{{ humanizeProposal.styleName }}）
+            </span>
+            <span class="humanize-score-delta" :class="{ improved: humanizeProposal.afterScore < humanizeProposal.beforeScore }">
+              {{ humanizeProposal.beforeScore }} → {{ humanizeProposal.afterScore }} 分
+            </span>
+          </div>
+          <div class="humanize-diff-stats">
+            <span>删除 {{ humanizeProposal.diff.removed }} 行</span>
+            <span>新增 {{ humanizeProposal.diff.added }} 行</span>
+            <span>改后评级：{{ humanizeProposal.afterLevelLabel }}</span>
+          </div>
+          <div v-if="humanizeProposal.fidelity && (humanizeProposal.fidelity.total > 0 || humanizeProposal.fidelity.codeBlockLost)" class="humanize-fidelity-bar" :class="humanizeProposal.fidelity.ok ? 'is-ok' : 'is-warn'">
+            <svg v-if="humanizeProposal.fidelity.ok" class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-check-circle"/></svg>
+            <svg v-else class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-alert-triangle"/></svg>
+            <span v-if="humanizeProposal.fidelity.ok">事实核验通过：{{ humanizeProposal.fidelity.total }} 项数字/时间/外链完整保留</span>
+            <span v-else>
+              注意：{{ humanizeProposal.fidelity.codeBlockLost ? '检测到代码块数量减少；' : '' }}{{ humanizeProposal.fidelity.missing.length ? '可能遗漏锚点：' + humanizeProposal.fidelity.missing.slice(0, 4).join('、') : '' }}
+            </span>
+          </div>
+          <div class="humanize-diff-box">
+            <div v-for="(row, idx) in humanizeProposal.diff.compact" :key="idx" class="diff-row" :class="row.type">
+              <span class="diff-sign">{{ row.type === 'add' ? '+' : row.type === 'del' ? '−' : row.type === 'fold' ? '⋯' : ' ' }}</span>
+              <span class="diff-text">{{ row.text || ' ' }}</span>
+            </div>
+          </div>
+          <div class="humanize-proposal-actions">
+            <button v-if="!humanizeProposal.applied" type="button" class="btn btn-primary" style="flex:1;justify-content:center;" @click="applyHumanizeProposal">
+              <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-check-circle"/></svg>
+              应用改写
+            </button>
+            <button v-else type="button" class="btn" style="flex:1;justify-content:center;" @click="undoHumanizeProposal">
+              <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-rotate-ccw"/></svg>
+              撤销改写
+            </button>
+            <button type="button" class="btn" @click="discardHumanizeProposal">关闭</button>
+          </div>
         </div>
       </div>
     </div>
-
-    <div class="ai-input">
-      <textarea v-model="aiInput" :disabled="!aiReady" rows="2"
-                placeholder="例：换成适合技术文的主题，主色改微信绿"
-                @keydown.enter.exact.prevent="aiSend()"></textarea>
-      <button class="btn btn-primary" :disabled="!aiReady" @click="aiBusy ? aiStop() : aiSend()">{{ aiBusy ? '⏹ 停止' : '发送' }}</button>
-    </div>
   </div>
 
-  <!-- 图床管理弹窗 -->
+  <!-- 媒体中心（多图床聚合 + IndexedDB 本地图库） -->
   <div class="modal-overlay" v-if="showImageManager" @click.self="showImageManager = false">
-    <div class="modal" style="width:560px;">
+    <div class="modal" style="width:620px;max-height:78vh;">
       <div class="modal-header">
-        <h3>🖼️ 图床管理</h3>
-        <button class="close-btn" @click="showImageManager = false">✕</button>
+        <h3>
+          <svg class="ui-icon ui-icon-primary" width="17" height="17" aria-hidden="true"><use href="#mp-i-images"/></svg>
+          媒体中心与多图床
+        </h3>
+        <button class="close-btn" @click="showImageManager = false" aria-label="关闭媒体中心">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-x"/></svg>
+        </button>
       </div>
-      <div style="padding:14px 18px; max-height:65vh; overflow-y:auto;">
+      <div class="modal-tablist" role="tablist" aria-label="媒体中心标签页">
+        <button type="button" class="modal-tab" role="tab" id="media-tab-local" :aria-selected="mediaTab === 'local' ? 'true' : 'false'" @click="mediaTab = 'local'">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-database"/></svg>
+          本地图库 ({{ localImages.length }})
+        </button>
+        <button type="button" class="modal-tab" role="tab" id="media-tab-remote" :aria-selected="mediaTab === 'remote' ? 'true' : 'false'" @click="mediaTab = 'remote'">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-cloud"/></svg>
+          云端记录 ({{ imageHistory.length }})
+        </button>
+        <button type="button" class="modal-tab" role="tab" id="media-tab-config" :aria-selected="mediaTab === 'config' ? 'true' : 'false'" @click="mediaTab = 'config'">
+          <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-sliders"/></svg>
+          多图床聚合设置
+        </button>
+      </div>
+
+      <!-- Tab 1: IndexedDB 本地图库 -->
+      <div v-if="mediaTab === 'local'" role="tabpanel" aria-labelledby="media-tab-local" style="padding:14px 18px; overflow-y:auto; flex:1;">
+        <div class="media-stats-bar">
+          <span>IndexedDB 大图库：<strong>{{ localImages.length }}</strong> 张 · 占用 <strong>{{ localImagesTotalSize }}</strong></span>
+          <div style="display:flex;gap:6px;">
+            <label class="btn" style="font-size:11px;padding:3px 9px;cursor:pointer;">
+              <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-plus"/></svg>
+              添加图片
+              <input type="file" accept="image/*" class="file-input-hidden" @change="handleMediaFileSelect">
+            </label>
+            <button class="btn" style="font-size:11px;padding:3px 9px;" @click="cleanupUnusedLocalImages" :disabled="!localImages.length">
+              <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-trash"/></svg>
+              清理未使用
+            </button>
+          </div>
+        </div>
+        <div v-if="localImages.length === 0" style="text-align:center;padding:36px;color:var(--text-muted);">
+          本地图库暂无图片<br><small>粘贴、拖拽或点击上方「添加图片」将自动压缩并存入 IndexedDB（突破 5MB 限制）</small>
+        </div>
+        <div v-else class="media-local-grid">
+          <div class="media-local-card" v-for="item in localImages" :key="item.id">
+            <img :src="item.dataUrl" :alt="item.name" class="media-local-thumb">
+            <div class="media-local-meta">
+              <div class="media-local-name" :title="item.name">{{ item.name }}</div>
+              <div>{{ formatMediaSize(item.size) }}</div>
+            </div>
+            <div class="media-local-actions">
+              <button class="btn" @click="insertLocalImage(item)" title="插入到当前光标位置">插入</button>
+              <button class="btn" @click="copyLocalImageMd(item)" title="复制 Markdown 占位语法">MD</button>
+              <button class="btn" style="color:var(--danger);" @click="deleteLocalImageItem(item.id)" title="从 IndexedDB 删除">删</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: 云端上传记录 -->
+      <div v-if="mediaTab === 'remote'" role="tabpanel" aria-labelledby="media-tab-remote" style="padding:14px 18px; overflow-y:auto; flex:1;">
         <div v-if="imageHistory.length === 0" style="text-align:center;padding:40px;color:var(--text-muted);">
-          暂无上传记录<br><small>粘贴或拖拽图片时会自动上传到 SM.MS</small>
+          暂无云端上传记录<br><small>在「多图床聚合设置」选择 GitHub / SM.MS / 自定义接口后，粘贴图片将自动上传并记录外链</small>
         </div>
         <div v-for="(img, idx) in imageHistory" :key="idx" style="display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">
           <img :src="img.url" style="width:60px;height:60px;object-fit:cover;border-radius:6px;background:var(--hover-bg);">
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ img.name }}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{{ img.time }}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{{ img.provider ? '[' + img.provider + '] ' : '' }}{{ img.time }}</div>
           </div>
           <button class="btn" style="font-size:11px;padding:4px 10px;" @click="copyImageUrl(img)">
-            📋 复制链接
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-link"/></svg>
+            链接
           </button>
           <button class="btn" style="font-size:11px;padding:4px 10px;" @click="copyImageMd(img)">
-            📝 复制MD
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-code"/></svg>
+            MD
           </button>
+        </div>
+      </div>
+
+      <!-- Tab 3: 多图床聚合设置 -->
+      <div v-if="mediaTab === 'config'" role="tabpanel" aria-labelledby="media-tab-config" style="padding:14px 18px; overflow-y:auto; flex:1;">
+        <div class="media-form-grid">
+          <div>
+            <label class="media-field-label">默认图片存储方式（云图床失败时自动安全降级至 IndexedDB 本地图库）</label>
+            <select class="media-select" :value="mediaConfig.provider" @change="updateMediaConfig({ provider: $event.target.value })">
+              <option v-for="p in mediaProviderList" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+            <div class="toggle-row-desc" style="margin-top:4px;">{{ mediaProviderInfo.desc }}</div>
+          </div>
+
+          <div class="toggle-row" style="padding:4px 0;">
+            <div>
+              <div class="toggle-row-label">
+                <svg class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-shrink"/></svg>
+                智能压缩大图
+              </div>
+              <div class="toggle-row-desc">超过 150KB 自动限宽 1600px 压缩（自动跳过 GIF 动图与 SVG）</div>
+            </div>
+            <button type="button" class="toggle-switch" :class="{ active: mediaConfig.compress }" @click="updateMediaConfig({ compress: !mediaConfig.compress })" aria-label="开关智能压缩大图"></button>
+          </div>
+
+          <!-- GitHub + CDN 配置 -->
+          <div v-if="mediaConfig.provider === 'github'" class="media-form-grid" style="padding:10px;border:1px solid var(--border);border-radius:8px;">
+            <div class="media-row-2">
+              <div>
+                <label class="media-field-label">GitHub 用户名 / Owner</label>
+                <input class="media-input" type="text" :value="mediaConfig.github.owner" @input="updateMediaNested('github', 'owner', $event.target.value)" placeholder="如 yourname">
+              </div>
+              <div>
+                <label class="media-field-label">仓库名 / Repo</label>
+                <input class="media-input" type="text" :value="mediaConfig.github.repo" @input="updateMediaNested('github', 'repo', $event.target.value)" placeholder="如 image-bed">
+              </div>
+            </div>
+            <div class="media-row-2">
+              <div>
+                <label class="media-field-label">分支 / Branch</label>
+                <input class="media-input" type="text" :value="mediaConfig.github.branch" @input="updateMediaNested('github', 'branch', $event.target.value)" placeholder="main">
+              </div>
+              <div>
+                <label class="media-field-label">目录前缀 / Path</label>
+                <input class="media-input" type="text" :value="mediaConfig.github.path" @input="updateMediaNested('github', 'path', $event.target.value)" placeholder="images">
+              </div>
+            </div>
+            <div>
+              <label class="media-field-label">Personal Access Token (仅需 repo 权限，仅存本机)</label>
+              <input class="media-input" type="password" :value="mediaConfig.github.token" @input="updateMediaNested('github', 'token', $event.target.value)" placeholder="ghp_xxx 或 github_pat_xxx">
+            </div>
+            <div class="media-row-2">
+              <div>
+                <label class="media-field-label">外链加速方式</label>
+                <select class="media-select" :value="mediaConfig.github.cdnType" @change="updateMediaNested('github', 'cdnType', $event.target.value)">
+                  <option value="jsdelivr">jsDelivr CDN（推荐）</option>
+                  <option value="raw">GitHub Raw 直链</option>
+                  <option value="custom">自定义加速域名</option>
+                </select>
+              </div>
+              <div v-if="mediaConfig.github.cdnType === 'custom'">
+                <label class="media-field-label">自定义域名</label>
+                <input class="media-input" type="text" :value="mediaConfig.github.customDomain" @input="updateMediaNested('github', 'customDomain', $event.target.value)" placeholder="https://img.example.com">
+              </div>
+            </div>
+          </div>
+
+          <!-- SM.MS 配置 -->
+          <div v-if="mediaConfig.provider === 'smms'" class="media-form-grid" style="padding:10px;border:1px solid var(--border);border-radius:8px;">
+            <div>
+              <label class="media-field-label">SM.MS API Token</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input class="media-input" type="password" :value="mediaConfig.smms.token" @input="updateMediaNested('smms', 'token', $event.target.value)" placeholder="填入 SM.MS API Token">
+                <a href="https://sm.ms/home/apitoken" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--primary);white-space:nowrap;">获取</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 自定义 HTTP 上传接口配置 -->
+          <div v-if="mediaConfig.provider === 'custom'" class="media-form-grid" style="padding:10px;border:1px solid var(--border);border-radius:8px;">
+            <div>
+              <label class="media-field-label">上传接口地址 (POST multipart/form-data)</label>
+              <input class="media-input" type="text" :value="mediaConfig.custom.endpoint" @input="updateMediaNested('custom', 'endpoint', $event.target.value)" placeholder="https://your-host.com/api/v1/upload">
+            </div>
+            <div class="media-row-2">
+              <div>
+                <label class="media-field-label">表单字段名 (fieldName)</label>
+                <input class="media-input" type="text" :value="mediaConfig.custom.fieldName" @input="updateMediaNested('custom', 'fieldName', $event.target.value)" placeholder="file">
+              </div>
+              <div>
+                <label class="media-field-label">返回 JSON 的 URL 路径</label>
+                <input class="media-input" type="text" :value="mediaConfig.custom.responsePath" @input="updateMediaNested('custom', 'responsePath', $event.target.value)" placeholder="data.url">
+              </div>
+            </div>
+            <div>
+              <label class="media-field-label">自定义请求头（可选，每行一条 Key: Value）</label>
+              <textarea class="media-textarea" :value="mediaConfig.custom.headersText" @input="updateMediaNested('custom', 'headersText', $event.target.value)" placeholder="Authorization: Bearer your-token"></textarea>
+            </div>
+            <div>
+              <label class="media-field-label">返回相对路径时的域名前缀（可选）</label>
+              <input class="media-input" type="text" :value="mediaConfig.custom.urlPrefix" @input="updateMediaNested('custom', 'urlPrefix', $event.target.value)" placeholder="https://cdn.example.com">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 原生 <dialog>：3:4 小红书自动分页知识卡片工坊 -->
+  <dialog ref="xhsDialogRef" class="native-modal" closedby="any" aria-labelledby="xhs-modal-title" @close="onXhsDialogClose">
+    <div class="modal-header">
+      <h1 id="xhs-modal-title">
+        <svg class="ui-icon ui-icon-rose" width="17" height="17" aria-hidden="true"><use href="#mp-i-layers"/></svg>
+        小红书知识卡片工坊（自动分页 · 1080×1440 超清）
+      </h1>
+      <button type="button" class="close-btn" @click="closeXhsStudio" aria-label="关闭知识卡片工坊">
+        <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-x"/></svg>
+      </button>
+    </div>
+
+    <div class="xhs-studio-controls">
+      <div class="xhs-control-group">
+        <span style="color:var(--text-muted);">风格</span>
+        <button
+          type="button"
+          class="xhs-style-pill"
+          v-for="s in xhsStyleList"
+          :key="s.id"
+          :class="{ active: xhsConfig.styleKey === s.id }"
+          :title="s.desc"
+          @click="setXhsOption('styleKey', s.id)"
+        >{{ s.name }}</button>
+      </div>
+      <div class="xhs-control-group">
+        <span style="color:var(--text-muted);">比例</span>
+        <button type="button" class="xhs-style-pill" :class="{ active: xhsConfig.ratio === '3:4' }" @click="setXhsOption('ratio', '3:4')">3:4 竖版</button>
+        <button type="button" class="xhs-style-pill" :class="{ active: xhsConfig.ratio === '1:1' }" @click="setXhsOption('ratio', '1:1')">1:1 方形</button>
+      </div>
+      <label class="xhs-control-group" style="cursor:pointer;">
+        <input type="checkbox" :checked="xhsConfig.includeCover" @change="setXhsOption('includeCover', $event.target.checked)">
+        <span>自动封面</span>
+      </label>
+      <label class="xhs-control-group" style="cursor:pointer;">
+        <input type="checkbox" :checked="xhsConfig.splitByHr" @change="setXhsOption('splitByHr', $event.target.checked)">
+        <span>按 --- 换页</span>
+      </label>
+      <label class="xhs-control-group" style="cursor:pointer;">
+        <input type="checkbox" :checked="xhsConfig.showPageNumber" @change="setXhsOption('showPageNumber', $event.target.checked)">
+        <span>页码</span>
+      </label>
+      <input
+        type="text"
+        class="media-input"
+        style="width:120px;padding:3px 8px;font-size:11.5px;"
+        :value="xhsConfig.author"
+        @input="setXhsOption('author', $event.target.value)"
+        placeholder="署名/水印"
+      >
+    </div>
+
+    <div class="xhs-gallery">
+      <div class="xhs-card-slot" v-for="card in xhsCards" :key="card.index + '-' + xhsConfig.styleKey + '-' + xhsConfig.ratio">
+        <div class="xhs-card-stage" :data-xhs-card-index="card.index" v-html="card.html"></div>
+        <div class="xhs-card-bar">
+          <span>{{ card.kind === 'cover' ? '封面 · ' : '' }}第 {{ card.index }} / {{ card.total }} 张</span>
+          <button type="button" class="btn" style="font-size:11px;padding:2px 8px;" :disabled="xhsExporting" @click="exportSingleXhsCard(card)">
+            <svg class="ui-icon" width="12" height="12" aria-hidden="true"><use href="#mp-i-download"/></svg>
+            单张 PNG
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="xhs-studio-footer">
+      <div>
+        <span v-if="xhsStatus" class="inline-with-icon" :style="{ color: xhsExporting ? 'var(--primary)' : 'var(--success)', fontWeight: 600 }">
+          <progress v-if="xhsExporting" class="loading-spinner" style="--size:13px;" aria-hidden="true"></progress>
+          <svg v-else class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-check-circle"/></svg>
+          {{ xhsStatus }}
+        </span>
+        <span v-else>共自动切分 <strong>{{ xhsCards.length }}</strong> 张卡片 · 导出分辨率 <strong>{{ xhsConfig.ratio === '1:1' ? '1080×1080' : '1080×1440' }}</strong>（可插入 <code>---</code> 精确控制分页）</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="btn" @click="regenerateXhsCards" :disabled="xhsExporting">
+          <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-refresh"/></svg>
+          刷新分页
+        </button>
+        <button type="button" class="btn btn-primary" @click="exportAllXhsCardsZip" :disabled="xhsExporting || !xhsCards.length">
+          <progress v-if="xhsExporting" class="loading-spinner" style="--size:13px;" aria-hidden="true"></progress>
+          <svg v-else class="ui-icon" width="14" height="14" aria-hidden="true"><use href="#mp-i-package"/></svg>
+          {{ xhsExporting ? '打包导出中...' : '打包 ZIP 导出全部' }}
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 多文档草稿箱弹窗（IndexedDB 持久化） -->
+  <div class="modal-overlay" v-if="showDocsModal" @click.self="showDocsModal = false">
+    <div class="modal" style="width:540px;max-height:74vh;">
+      <div class="modal-header">
+        <h3>
+          <svg class="ui-icon ui-icon-primary" width="17" height="17" aria-hidden="true"><use href="#mp-i-folder"/></svg>
+          多文档草稿箱（{{ docsList.length }} 篇）
+        </h3>
+        <button class="close-btn" @click="showDocsModal = false" aria-label="关闭草稿箱">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-x"/></svg>
+        </button>
+      </div>
+      <div class="docs-toolbar">
+        <input type="text" class="media-input" v-model="docsSearch" placeholder="搜索文稿标题或正文内容..." style="flex:1;">
+        <button type="button" class="btn btn-primary" @click="createNewDoc">
+          <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-plus"/></svg>
+          新建文稿
+        </button>
+      </div>
+      <div class="docs-list">
+        <div v-if="filteredDocsList.length === 0" class="history-empty">
+          未找到匹配文稿<br><small>点击上方「新建文稿」开始一篇新文章</small>
+        </div>
+        <div
+          v-for="doc in filteredDocsList"
+          :key="doc.id"
+          class="doc-item"
+          :class="{ active: doc.id === currentDocId }"
+          @click="switchDoc(doc)"
+        >
+          <div class="doc-item-main">
+            <div class="doc-item-title-row">
+              <span class="doc-item-title">{{ doc.title }}</span>
+              <span v-if="doc.id === currentDocId" class="doc-current-pill">当前</span>
+            </div>
+            <div class="doc-item-excerpt">{{ doc.excerpt }}</div>
+            <div class="doc-item-meta">
+              <span>{{ doc.wordCount }} 字</span>
+              <span>·</span>
+              <span>{{ formatDocTime(doc.updatedAt) }}</span>
+            </div>
+          </div>
+          <div class="doc-item-actions" @click.stop>
+            <button type="button" class="history-item-delete" @click="duplicateDoc(doc)" title="复制一份" aria-label="复制此文稿">
+              <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-copy"/></svg>
+            </button>
+            <button type="button" class="history-item-delete" @click="deleteDocItem(doc)" title="删除文稿" aria-label="删除此文稿">
+              <svg class="ui-icon" width="13" height="13" aria-hidden="true"><use href="#mp-i-trash"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -677,32 +1738,51 @@
 
   <!-- 模板库弹窗 -->
   <div class="modal-overlay" v-if="showTemplates" @click.self="showTemplates = false">
-    <div class="modal" style="width:560px;">
+    <div class="modal" style="width:620px;max-height:72vh;">
       <div class="modal-header">
-        <h3>📋 模板库</h3>
-        <button class="close-btn" @click="showTemplates = false">✕</button>
+        <h3>
+          <svg class="ui-icon ui-icon-primary" width="17" height="17" aria-hidden="true"><use href="#mp-i-layout-grid"/></svg>
+          模板库
+        </h3>
+        <button class="close-btn" @click="showTemplates = false" aria-label="关闭模板库">
+          <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="#mp-i-x"/></svg>
+        </button>
       </div>
-      <div style="padding:14px 18px; max-height:65vh; overflow-y:auto;">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">选择模板开始写作，已有内容会提示确认</div>
-        <div v-for="t in templates" :key="t.key" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:var(--transition);" @click="applyTemplate(t)" @mouseenter="$event.currentTarget.style.background='var(--hover-bg)'" @mouseleave="$event.currentTarget.style.background=''">
-          <div style="font-size:20px;">{{ t.name.split(' ')[0] }}</div>
-          <div style="flex:1;">
-            <div style="font-weight:500;font-size:13px;">{{ t.name.slice(t.name.indexOf(' ') + 1) }}</div>
-            <div style="font-size:11px;color:var(--text-muted);">{{ t.desc }}</div>
-          </div>
-          <span style="font-size:11px;color:var(--primary);">使用 →</span>
+      <div style="padding:14px 18px; overflow-y:auto;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">选择模板快速开始写作，若编辑器已有内容会提示确认</div>
+        <div class="template-grid">
+          <button
+            type="button"
+            class="template-card"
+            v-for="t in templates"
+            :key="t.key"
+            @click="applyTemplate(t)"
+          >
+            <div class="template-card-icon" aria-hidden="true" :style="{ background: (t.color || '#4f6ef7') + '18', color: t.color || '#4f6ef7' }" v-html="t.icon"></div>
+            <div class="template-card-info">
+              <div class="template-card-title">{{ t.title || t.name }}</div>
+              <div class="template-card-desc">{{ t.desc }}</div>
+            </div>
+            <span class="template-card-arrow" aria-hidden="true">
+              <svg class="ui-icon" width="14" height="14"><use href="#mp-i-chevron-right"/></svg>
+            </span>
+          </button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 主题 + 模板 + 应用 -->
-<script src="js/themes.js?v=20261126"></script>
-<script src="js/ai-client.js?v=20261126"></script>
-<script src="js/templates.js"></script>
-<script src="js/publish-utils.js?v=20261126"></script>
-<script src="js/app.js?v=20261126"></script>
+<!-- 主题 + 模板 + 媒体库 + 小红书卡片 + 去 AI 味引擎 + 多文档草稿箱 + 应用 -->
+<script src="js/themes.js?v=20261127i"></script>
+<script src="js/ai-client.js?v=20261127i"></script>
+<script src="js/humanizer.js?v=20261127i"></script>
+<script src="js/docs-store.js?v=20261127i"></script>
+<script src="js/templates.js?v=20261127i"></script>
+<script src="js/media-store.js?v=20261127i"></script>
+<script src="js/xhs-cards.js?v=20261127i"></script>
+<script src="js/publish-utils.js?v=20261127i"></script>
+<script src="js/app.js?v=20261127i"></script>
 
 <!-- PWA Service Worker -->
 <script>

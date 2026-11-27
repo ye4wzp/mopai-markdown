@@ -7,6 +7,7 @@ const themes = {
   default: {
     name: '默认公众号',
     emoji: '📱',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
     desc: '经典微信公众号排版',
     category: 'classic',
     accent: '#4f6ef7',
@@ -37,6 +38,7 @@ const themes = {
   tech: {
     name: '技术风格',
     emoji: '💻',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
     desc: '适合技术文章',
     category: 'classic',
     accent: '#667eea',
@@ -67,6 +69,7 @@ const themes = {
   elegant: {
     name: '优雅简约',
     emoji: '✨',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg>',
     desc: '精致杂志风排版',
     category: 'classic',
     accent: '#c9a96e',
@@ -97,6 +100,7 @@ const themes = {
   deep_read: {
     name: '深度阅读',
     emoji: '📖',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
     desc: '适合长文阅读',
     category: 'classic',
     accent: '#6366f1',
@@ -128,6 +132,7 @@ const themes = {
   nyt: {
     name: '纽约时报',
     emoji: '📰',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>',
     desc: '经典报刊风格',
     category: 'media',
     accent: '#326891',
@@ -158,6 +163,7 @@ const themes = {
   ft: {
     name: '金融时报',
     emoji: '💰',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
     desc: 'FT 经典粉橙色调',
     category: 'media',
     accent: '#0d7680',
@@ -188,6 +194,7 @@ const themes = {
   medium: {
     name: 'Medium',
     emoji: '📝',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="6.5" cy="12" r="4.5"/><ellipse cx="15" cy="12" rx="2.6" ry="4.2"/><ellipse cx="20.5" cy="12" rx="1.2" ry="3.8"/></svg>',
     desc: 'Medium 博客风格',
     category: 'media',
     accent: '#292929',
@@ -219,6 +226,7 @@ const themes = {
   apple: {
     name: 'Apple 极简',
     emoji: '🍎',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>',
     desc: '苹果风格极简设计',
     category: 'modern',
     accent: '#0071e3',
@@ -249,6 +257,7 @@ const themes = {
   claude: {
     name: 'Claude',
     emoji: '🤖',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="21.5" y2="12"/><line x1="5.3" y1="5.3" x2="18.7" y2="18.7"/><line x1="18.7" y1="5.3" x2="5.3" y2="18.7"/></svg>',
     desc: 'Anthropic Claude 风格',
     category: 'modern',
     accent: '#c96442',
@@ -280,6 +289,7 @@ const themes = {
   sspai: {
     name: '少数派',
     emoji: '🔮',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7v11"/><path d="M15 7v8a3 3 0 0 0 3 3"/></svg>',
     desc: 'sspai 清新科技风',
     category: 'modern',
     accent: '#d71a18',
@@ -310,6 +320,7 @@ const themes = {
   bamboo: {
     name: '竹林',
     emoji: '🎋',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><line x1="10" y1="9" x2="14" y2="9"/><line x1="10" y1="15" x2="14" y2="15"/><path d="M12 11c2.5-3.5 6-4 7-3.5-.5 2-2.5 4.5-7 3.5Z"/><path d="M12 16c-2.5-3-5.5-3.5-6.5-3 .5 1.8 2.2 4 6.5 3Z"/></svg>',
     desc: '中国风绿色雅致',
     category: 'creative',
     accent: '#2e7d32',
@@ -340,6 +351,7 @@ const themes = {
   dark_night: {
     name: '暗夜模式',
     emoji: '🌃',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/></svg>',
     desc: '暗色背景高对比',
     category: 'creative',
     accent: '#e94560',
@@ -371,6 +383,7 @@ const themes = {
   gradient: {
     name: '渐变彩虹',
     emoji: '🌈',
+    icon: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 17a10 10 0 0 0-20 0"/><path d="M18 17a6 6 0 0 0-12 0"/><path d="M14 17a2 2 0 0 0-4 0"/></svg>',
     desc: '标题彩色渐变效果',
     category: 'creative',
     accent: '#f5576c',

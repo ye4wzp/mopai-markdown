@@ -27,12 +27,14 @@
 
 「Markdown 转公众号」的工具不少，MoPai 想做的是**从写作到发布的完整闭环**——下面这些是它和纯排版工具不一样的地方：
 
-- 🤖 **AI 排版师** — 「换成适合技术文的主题，主色改微信绿」一句话搞定。AI 通过受限工具直接操作编辑器，每步操作一张卡片、一键撤销，支持自定义 OpenAI 兼容 Base URL（中转站 / Ollama / LM Studio）。**纯排版工具没有这个。**
-- 🔌 **CLI + MCP + 外部注入** — 自带零依赖 CLI（`bin/mopai.mjs`）、标准 stdio MCP Server（`bin/mopai-mcp.mjs`）与 `?load=` 注入入口，脚本或 Agent 可直接调用排版、提纲分析或拉起编辑器待审。
+- 🤖 **AI 排版师 + 10 维去 AI 味** — 「换成适合技术文的主题，主色改微信绿」一句话搞定；内置纯本地离线 10 维 AI 味体检（官腔绕弯、黑话宣传、否定排比、假想敌、借权威、前置铺垫、标题回声、机械清单、复读重复、Burstiness 句长节奏与 MATTR 词丰度）、三档改写力度、事实冻结与改后保真核验、行级 Diff 对比确认，并支持免 Key 一键复制纯正文跳转腾讯朱雀实测 AI 率。
+- 📚 **多文档草稿箱（IndexedDB）+ 划词悬浮条** — 支持多篇文章并行撰写、搜索、复制与即时切换，拖选正文即刻呼出悬浮快捷条（加粗 / 斜体 / 行内代码 / 链接 / 仅对选中段去 AI 味）。
+- 🔌 **CLI + MCP + 微信草稿箱直发** — 自带零依赖 CLI（`bin/mopai.mjs`）、标准 stdio MCP Server（`bin/mopai-mcp.mjs`）与 `?load=` 注入入口，支持终端/Agent 直接排版、转存图片并一键直发微信公众号草稿箱（`publish-wechat` / `publish_wechat_draft`）。
+- 📕 **3:4 小红书自动分页知识卡片** — 原创语义块级智能分页 + 4 套卡片美学风格（墨韵宣纸 / 极简备忘录 / 渐变玻璃 / 暗夜极客），支持 `---` 精确换页、1080×1440 超清单张导出与纯前端零依赖一键打包 ZIP。
+- 🖼️ **多图床聚合 + IndexedDB 大图库** — 支持 IndexedDB 本地百 MB 级持久化图库（自动压缩与孤儿清理），以及 GitHub + CDN、SM.MS、自定义 HTTP 上传接口（兼容 PicGo / Lsky Pro / Worker）聚合路由。
 - 🚀 **一键分发全平台** — 14 平台按最优格式一键复制；配合 [WechatSync](https://github.com/wechatsync/Wechatsync) 扩展可直接同步到 29+ 平台创建草稿。
-- 🖼️ **四种导出** — HTML / PDF / 长图 PNG / Word，文件自动以文章标题命名。
-- 📱 **离线可用** — PWA 可安装为桌面应用，手机端编辑/预览功能完整。
-- 🎨 **13 主题 + 深度定制** — 暗色模式、自定义主题色、字体字号、自定义 CSS。
+- 📱 **手机端深度适配 + 离线 PWA** — `100dvh` 动态视口与刘海安全区适配、iOS `16px` 零缩放输入、中文 IME 安全回车、底部拇指快捷操作栏、单列 Bottom Sheet 抽屉，全站统一线性矢量 SVG 图标系统。
+- 🎨 **13 主题 + 深度定制** — 暗色模式（预览区明暗独立隔离不串色）、自定义主题色、字体字号、自定义 CSS。
 
 ## 📸 更多预览
 
@@ -112,16 +114,14 @@ MoPai 内置了 [WechatSync](https://github.com/wechatsync/Wechatsync) SDK，支
 
 > 自动提取文章标题和首图作为封面，同步为草稿模式，发布前可在各平台二次编辑确认。
 
-## 🤖 AI 助手
+## 🤖 AI 助手与去 AI 味
 
-在 ⚙️ 设置面板填入 API Key（或选择「自定义 (OpenAI 兼容)」填入自己的 Base URL）后，点顶栏「🤖 AI」打开助手面板。支持 DeepSeek / 智谱 GLM / SiliconFlow / 通义千问 / OpenAI / OpenRouter 以及任意 OpenAI 兼容中转站或本地模型（Ollama / LM Studio），**配置只存在本机浏览器，不经过任何服务器**。
+在设置面板填入 API Key（或选择「自定义 (OpenAI 兼容)」填入自己的 Base URL）后，点顶栏「AI」或编辑器右上角「去AI味」打开面板。支持 DeepSeek / 智谱 GLM / SiliconFlow / 通义千问 / OpenAI / OpenRouter 以及任意 OpenAI 兼容中转站或本地模型（Ollama / LM Studio），**配置只存在本机浏览器，不经过任何服务器**。
 
-能做两类事：
-
-- **直接操作编辑器** — 换主题、改主题色（13 套主题全部支持自定义主色与一键恢复默认）/字体/字号、局部或整篇改写。每步操作在面板里生成一张卡片，可单独撤销
-- **生成文本** — 起标题、写摘要、写小红书版文案，直接回复在对话里，不动正文
-
-安全边界：模型只能输出结构化 JSON，经校验后调用白名单里的 5 个函数，**永不 eval**。发布、清空、导出等不可逆操作不在白名单里，AI 无法触发。整篇改写必须由你点「应用」才生效。
+- **本地 10 维 AI 味体检（免 API Key、离线秒检）** — 参考 `blader/humanizer`、`op7418/Humanizer-zh`、`MrGeDiao/shuorenhua`、`LifelongLazyLearner/qu-ai-wei` 与 `yanstd888/humanizer-lint` 等活跃项目的方法论，自动跳过 frontmatter 与代码块，检出黑话宣传、官腔绕弯、否定排比/假想敌/借权威、前置长状语、元叙事、标题回声、机械加粗清单、句首复读、标点癖与句长突发性（Burstiness CV）/ MATTR 词丰度，支持点击跳转定位与一键本地清理客服残余。
+- **腾讯朱雀免 Key 快捷实测** — 一键剔除 Markdown 标记与代码块、复制纯净正文并打开官方[腾讯朱雀 AI 检测](https://matrix.tencent.com/ai-detect/)网页版，粘贴即测真实 AI 率。
+- **病灶定向去 AI 味改写** — 4 种口吻（白描干货 / 真人聊天 / 锐评观点 / 极简提纯）× 3 档改写力度（轻修保原句 / 标准去味 / 深度重组），支持全文或划词仅改选中段；改前自动冻结数字/时间/外链锚点，改后自动执行保真核验并展示行级 Diff 与分数降幅，一键应用或撤销。
+- **对话式排版操作** — 一句话换主题、改主题色（13 套主题全覆盖）/字体/字号、起标题、写摘要；模型仅能调用 5 个受限白名单函数，**永不 eval**，不可逆操作无法触发。
 
 ## 🛠️ CLI 与 MCP Server（零依赖，供脚本与 Agent 直接调用）
 
@@ -137,7 +137,14 @@ node bin/mopai.mjs render article.md --theme tech --color "#07c160" --full -o ou
 # 提取标题、字数与大纲（自动跳过代码块中的 # 注释）
 node bin/mopai.mjs outline article.md --json
 
-# 启动 MCP Server（提供 list_themes / render_markdown / format_file / extract_outline）
+# 预检并直发微信公众号草稿箱（读取环境变量 WECHAT_APP_ID / WECHAT_APP_SECRET）
+node bin/mopai.mjs publish-wechat article.md --theme tech --auto-cover --dry-run
+WECHAT_APP_ID=xxx WECHAT_APP_SECRET=yyy node bin/mopai.mjs publish-wechat article.md --theme tech
+
+# 零依赖纯 Node 本地服务（替代 python3）
+node bin/mopai.mjs serve --port 8080
+
+# 启动 MCP Server（提供 list_themes / render_markdown / format_file / extract_outline / publish_wechat_draft）
 node bin/mopai-mcp.mjs
 ```
 
@@ -218,23 +225,28 @@ open http://localhost:8080
 
 ```
 mopai-markdown/
-├── index.html          # 主页面
+├── index.html          # 主页面（含统一 65 符号内联线性 SVG 精灵表）
 ├── manifest.json       # PWA 配置
 ├── service-worker.js   # Service Worker（离线缓存）
 ├── bin/
-│   ├── mopai.mjs       # 命令行工具（themes / render / outline / mcp）
-│   └── mopai-mcp.mjs   # 零依赖 stdio MCP Server
+│   ├── mopai.mjs       # 零依赖 CLI（themes / render / outline / publish-wechat / serve / mcp）
+│   └── mopai-mcp.mjs   # 零依赖 stdio MCP Server（含 publish_wechat_draft）
 ├── lib/
-│   └── renderer.mjs    # Node 渲染内核（复用 js/themes.js）
+│   ├── renderer.mjs    # Node 渲染内核（复用 js/themes.js）
+│   └── wechat-api.mjs  # 微信公众号草稿箱直发模块（token 缓存、图片去重上传、自动封面）
 ├── css/
-│   └── styles.css      # 样式文件
+│   └── styles.css      # 设计系统、暗色隔离与手机端深度适配
 ├── js/
-│   ├── app.js          # Vue 应用主逻辑
-│   ├── themes.js       # 13 种主题定义 + 示例内容（全主题支持主色覆盖）
+│   ├── app.js          # Vue 3 应用主逻辑
+│   ├── themes.js       # 13 种主题定义 + 矢量图标 + 示例内容
 │   ├── ai-client.js    # LLM 传输层（OpenAI 兼容 + 自定义 Base URL + SSE 流式）
-│   ├── templates.js    # 模板库
+│   ├── humanizer.js    # 本地 10 维 AI 味体检 + 事实冻结保真核验 + 病灶定向改写 + LCS Diff + 朱雀纯正文提取
+│   ├── docs-store.js   # IndexedDB 多文档草稿箱
+│   ├── media-store.js  # IndexedDB 本地大图库 + 多图床聚合（GitHub CDN / SM.MS / 自定义接口）
+│   ├── xhs-cards.js    # 3:4 / 1:1 小红书自动分页知识卡片引擎 + 零依赖 PKZIP 打包器
+│   ├── templates.js    # 10 套写作模板库
 │   └── publish-utils.js # 发布 HTML 兼容处理（含代码着色内联与 Mermaid 转 PNG）
-├── tests/              # Chrome CDP 集成测试 + CLI / MCP 单元测试
+├── tests/              # Chrome CDP 端到端集成测试（含 375×812 移动端与去 AI 味链路）+ 单元测试
 ├── screenshots/        # 项目截图
 └── README.md
 ```

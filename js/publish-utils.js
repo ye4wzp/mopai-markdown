@@ -74,7 +74,7 @@
     });
   }
 
-  function svgToPngDataUrl(svgEl) {
+  function svgToPngDataUrl(svgEl, bgColor = '#ffffff') {
     if (typeof document === 'undefined' || typeof XMLSerializer === 'undefined') {
       return Promise.resolve(null);
     }
@@ -100,7 +100,7 @@
           canvas.width = width * scale;
           canvas.height = height * scale;
           const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = bgColor || '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.scale(scale, scale);
           ctx.drawImage(img, 0, 0, width, height);
@@ -114,7 +114,7 @@
     });
   }
 
-  async function inlineMermaidSvgs(cloneEl, sourceEl) {
+  async function inlineMermaidSvgs(cloneEl, sourceEl, bgColor) {
     if (!sourceEl || typeof document === 'undefined') return;
     const sourceDiagrams = Array.from(sourceEl.querySelectorAll('.mermaid-diagram svg'));
     const cloneDiagrams = Array.from(cloneEl.querySelectorAll('.mermaid-diagram svg'));
@@ -123,7 +123,7 @@
     await Promise.all(cloneDiagrams.map(async (cloneSvg, index) => {
       const sourceSvg = sourceDiagrams[index];
       if (!sourceSvg) return;
-      const pngUrl = await svgToPngDataUrl(sourceSvg);
+      const pngUrl = await svgToPngDataUrl(sourceSvg, bgColor);
       if (!pngUrl) return;
       const img = document.createElement('img');
       img.setAttribute('src', pngUrl);
@@ -139,7 +139,8 @@
     const imgs = Array.from(cloneEl.querySelectorAll('img'));
     await Promise.all(imgs.map(async (img) => {
       const src = img.getAttribute('src') || '';
-      if (!src.startsWith('blob:') && !src.startsWith('data:')) return;
+      // 已经是标准 data:image/* 的直接保留原样，避免 JPEG 体积暴涨或 GIF 动图被重绘成静态 PNG
+      if (!src.startsWith('blob:')) return;
 
       try {
         img.setAttribute('src', await imageToBase64(src));
@@ -170,10 +171,15 @@
       }
 
       const simplePre = pre.cloneNode(true);
-      const preStyle = filterInlineStyles(simplePre.getAttribute('style') || '');
+      const rawStyle = simplePre.getAttribute('style') || '';
+      const bgMatch = rawStyle.match(/(?:^|;\s*)background(?:-color)?:\s*([^;]+)/i);
+      const colorMatch = rawStyle.match(/(?:^|;\s*)color:\s*([^;]+)/i);
+      const bgColor = bgMatch ? bgMatch[1].trim() : '#282c34';
+      const textColor = colorMatch ? colorMatch[1].trim() : '#abb2bf';
+
       simplePre.setAttribute(
         'style',
-        `${preStyle ? preStyle + '; ' : ''}margin: 14px 0; padding: 14px 16px; background: #282c34; color: #abb2bf; line-height: 1.7; font-family: SFMono-Regular, Consolas, monospace; font-size: 13px;`
+        `margin: 14px 0; padding: 14px 16px; background: ${bgColor}; color: ${textColor}; line-height: 1.7; font-family: SFMono-Regular, Consolas, monospace; font-size: 13px;`
       );
       simplePre.removeAttribute('class');
       simplePre.removeAttribute('data-lang');
@@ -221,7 +227,7 @@
     const cloneEl = previewEl.cloneNode(true);
     inlineCodeTokenStyles(cloneEl, previewEl);
     if (options.inlineMermaid !== false) {
-      await inlineMermaidSvgs(cloneEl, previewEl);
+      await inlineMermaidSvgs(cloneEl, previewEl, options.mermaidBg);
     }
     await inlineLocalImages(cloneEl, options.imageToBase64);
 

@@ -2,20 +2,27 @@
 // MoPai 墨排 — Service Worker (PWA 离线支持)
 // ============================================
 
-const CACHE_NAME = 'mopai-v14';
+const CACHE_NAME = 'mopai-v24';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './manifest.json',
   './css/styles.css',
   './js/themes.js',
   './js/ai-client.js',
+  './js/humanizer.js',
+  './js/docs-store.js',
   './js/templates.js',
+  './js/media-store.js',
+  './js/xhs-cards.js',
   './js/publish-utils.js',
   './js/app.js',
 ];
 
 // 第三方 CDN 统一域名，运行时 stale-while-revalidate 缓存
 const CDN_HOSTS = ['https://cdn.jsdelivr.net'];
+
+const offlineResponse = () => new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
 
 // 安装：缓存静态资源
 self.addEventListener('install', (event) => {
@@ -60,12 +67,15 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
         }
         return response;
-      }).catch(() => caches.match(req).then(c => c || caches.match('./index.html')))
+      }).catch(() =>
+        caches.match(req, { ignoreSearch: true })
+          .then(c => c || caches.match('./index.html') || offlineResponse())
+      )
     );
     return;
   }
 
-  // CDN 资源：stale-while-revalidate
+  // CDN 资源：stale-while-revalidate，离线未命中时返回合法 503 响应而非 null
   if (CDN_HOSTS.some(host => req.url.startsWith(host))) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
@@ -74,22 +84,23 @@ self.addEventListener('fetch', (event) => {
           if (response.ok) cache.put(req, response.clone());
           return response;
         }).catch(() => null);
-        return cached || fetched;
+        return cached || (await fetched) || offlineResponse();
       })
     );
     return;
   }
 
-  // 本地静态资源（带 ?v= 版本号）：缓存优先
+  // 本地静态资源：stale-while-revalidate + ignoreSearch 兜底，
+  // 既让带 ?v= 版本号的脚本首次离线时可命中预缓存，又能在线自动后台刷新
   event.respondWith(
-    caches.match(req).then((cached) => {
-      return cached || fetch(req).then((response) => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
-        }
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const exactCached = await cache.match(req);
+      const fallbackCached = exactCached || await cache.match(req, { ignoreSearch: true });
+      const fetched = fetch(req).then((response) => {
+        if (response.ok) cache.put(req, response.clone());
         return response;
-      });
+      }).catch(() => null);
+      return exactCached || (await fetched) || fallbackCached || offlineResponse();
     })
   );
 });
